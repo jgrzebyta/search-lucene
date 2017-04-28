@@ -1,0 +1,16 @@
+@prefix : <http://example.org/> .
+@prefix data: <http://example.org/data#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema> .
+
+data:record1 a :Record ;
+    :term "term1" ;
+    :mock "12"^^xsd:int .
+
+data:record2 a :Record ;
+    :mock "12"^^xsd:int
+    :term "term2" .
+
+data:record3 a :Record ;
+    :term "term3" ;
+    :mock "50"^^xsd:int .
+
