@@ -1,56 +1,72 @@
 (ns search.repository
   (:require
-   [rdf4j.utils :as u]
-   [rdf4j.repository :as r]
-   [rdf4j.sparql.processor :as sp]
    [rdf4j.loader :as l :exclude [-main]]
-   [search-process :as srp])
-  (:import [org.eclipse.rdf4j.sail.nativerdf NativeStore]))
+   [rdf4j.repository :as r]
+   [rdf4j.utils :as u]
+   [rdf4j.dump :as d]
+   [clojure.tools.logging :as log])
+  (:import [java.io File]
+           [org.eclipse.rdf4j.sail.memory MemoryStore]
+           [org.eclipse.rdf4j.sail.nativerdf NativeStore]
+           [org.eclipse.rdf4j.repository.sail SailRepository]))
 
-(def search-term-sparql "
-prefix luc: <http://www.openrdf.org/contrib/lucenesail#>
-prefix xsd: <http://www.w3.org/2001/XMLSchema#>
-select ?idInt ?subject ?predicate ?score where {
-    bind(xsd:int(?id) :as ?idInt)
-    (?tfString luc:allMatches luc:property luc:allProperties luc:score) luc:search (?subject ?predicate ?score) .
-}
-")
+;; inform about state of mapping repository
+(def ^{:private true} mapping-changed (atom false)) 
 
-(def norm-matrix {:name 2 :synonym 0.1 :longName 1.5})
+;; Define protocol for manging state
+(defprotocol State
+  (getState [this field])
+  (setState [this field value]))
 
-(defn normalize-score
-  "Multiplies the score by weight defined in matrix based on predicate."
-  [score matrix predicate]
-  (* score (get matrix (keyword predicate) 1.0)))
+;; Bring together instance of `SailRepository` with
+;; the application specific metadata
+(defrecord RepositoryHolder [repository state-atom]
+  State
+  (getState [this field] (get @state-atom field))
+  (setState [this field value] (swap! state-atom assoc field value)))
 
-(defn make-native-repository
+(defn make-data-repository
   "Populates native repository with gene-annotation data. In the next step it will be done text searching on that."
     [dir dataset]
   (let [dir (u/create-dir dir)
         repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs"))]
-    (println "# Make native repository at: " (.toString dir))
+    (log/debug "# Make native repository at: " (.toString dir))
     (l/load-multidata repo dataset)     
     (let [cnt (count (r/get-all-statements repo))]
       (binding [*out* *err*] (printf "Loaded [%d] statements\n" cnt))
       (assert (> cnt 0)))
-    repo))
+    (RepositoryHolder. repo (atom {}))))
 
-(defn- make-binding
-  "Prepares binding for SPARQL request."
-  [term raw-id]
-  {:tfString term :id raw-id})
+(defn make-mapping-repository
+  "Prepares and loads `MemoryStore`-based repository."
+  [^File mapping-file]
+  (let [repo (-> (MemoryStore.)
+                 (r/make-repository))]
+    (l/load-data repo mapping-file)
+    (RepositoryHolder. repo (atom {:changed false}))))
 
-(defn process-search
-  ""
-  [repository terms]
-  (let [index (-> (r/make-mem-repository)
-                  (.initialize))
-        vf (u/value-factory repository)]
-    (dorun (pmap (fn [term]
-                   (let [id (:id term)
-                         trm-string (:value term)]
-                     (sp/with-sparql [:sparql search-term-sparql :result rs :binding (make-binding trm-string id) :repository repository]
-                       
-                       )))
-                 terms))))
+(defn add-item-to-mapping-repository
+  "Add record to mapping repository."
+  [^RepositoryHolder repository item]
+  (r/with-open-repository [cnx (get repository :repository)]
+    (try
+      (.begin cnx)
+      (let [model (.asMappingRDF item)]
+        (doseq [triple model] (.add cnx triple (r/context-array))))
+      (catch Exception e
+        (.rollback cnx)
+        (log/error "Error occured: " (.getMessage e))
+        false)
+      (finally (.commit cnx)
+               (.setState repository :changed true)
+               true))))
 
+(defn dump-mapping
+  "Recreate mapping repository file using the latest data."
+  [^File file ^RepositoryHolder repository]
+  (d/with-rdf-writer [wrt (.toPath file)]
+    (r/with-open-repository [cnx (get repository :repositor)]
+      (try
+        (.begin cnx)
+        (.export cnx wrt (r/context-array))
+        (finally (.commit cnx))))))

@@ -4,6 +4,7 @@
           :url "http://www.adalab-project.org/"
           :dependencies '[[adalab/triple-loader "0.2.1-SNAPSHOT"]
                           [org.clojure/tools.logging "0.3.1"]
+                          [org.clojure/tools.cli "0.3.5"]
                           [org.eclipse.rdf4j/rdf4j-runtime "2.3-SNAPSHOT"]
                           [buddy/buddy-core "1.2.0"]
                           [ch.qos.logback/logback-classic "1.2.3"]
@@ -15,11 +16,13 @@
 
 (require '[degree9.boot-semver :refer :all])
 
+(def version-namespace (symbol "search.version"))
 
 (task-options!
- version {:minor 'zero :patch 'one :include true}
+ version {:minor 'zero :patch 'one :include false :generate version-namespace}
  pom {:project (get-env :project) }
- aot {:all true})
+ aot {:all true}
+ jar {:main 'search.lucene-search})
 
 (deftask develop
   "Build SNAPSHOT version of jar"
@@ -46,5 +49,9 @@
    (pom)
    (aot)
    (uber)
-   (jar :file (format "%s-standalone.jar" (get-env :project)))
+   (jar :file (format "%s-standalone.jar" (-> (get-env :project)
+                                              (str)
+                                              (.split "/")
+                                              (get 1)
+                                           )))
    (target)))
