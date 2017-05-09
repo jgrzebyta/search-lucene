@@ -25,6 +25,8 @@
 
 (def ^IRI SHA1 (.createIRI vf NS-INST "sha1"))
 
+;; Keeps the main instance of `RepositoriesSet`.
+(def context (atom nil))
 
 (defprotocol AsMappingRDF
   "Returns RDF representation of mapping entity"
@@ -55,12 +57,11 @@
   (findInData ^SearchRecord [this ^String term raw-id] "Looks for `term` in data repository.")
   (findInMapping ^SearchRecord [this ^String term raw-id] "Look for `term` in mapping resources. Loads the record if not found."))
 
-
-(defrecord RepositoriesSet [^RepositoryHolder mapping-repository ^RepositoryHolder data-repository]
+(defrecord RepositoriesSet [mapping-repository data-repository]
   FindInRepository
   
   (findInData [this term raw-id]
-    (spr/with-sparql [:sparql find-data-rq :result rt :binding {:tfString term :id raw-id} (get data-repository :repository)]
+    (spr/with-sparql [:sparql find-data-rq :result rt :binding {:tfString term :id raw-id} :repository (get data-repository :repository)]
       (let [records (map
                      (fn [i] ;; Function receives sinle instance of org.eclipse.rdf4j.query.BindingSet and
                              ;; converts into SearchRecord. It normalizes score in between.
@@ -87,7 +88,7 @@
   
   (findInMapping [this term raw-id]
     ;; try to find `term` mapping record ...
-    (spr/with-sparql [:sparql find-mapping-rq :result rt :binding {:term_str term} (get mapping-repository :repository)]
+    (spr/with-sparql [:sparql find-mapping-rq :result rt :binding {:term_str term} :repository (get mapping-repository :repository)]
       (let [cnt (count rt)]
         (cond (= cnt 0) ;; ... if not found ...
               (when-let [record (.findInData term raw-id)] ;; ... try to find in dataset
@@ -102,6 +103,11 @@
                              nil
                              nil))))))
 
+(extend-type RepositoriesSet
+  sr/Closeable
+  (close [this]
+    (sr/close (get this :mapping-repository))
+    (sr/close (get this :data-repository))))
 
 ;; Process mapping
 
@@ -116,9 +122,17 @@
   [mapping-file data-files]
   (let [mapping-repository (sr/make-mapping-repository mapping-file)
         local-dir (apply str (list (System/getProperty "user.dir") "/rdf4j-repository"))
-        data-repository (sr/make-data-repository local-dir data-file)]
-    (RepositoriesSet. mapping-repository data-repository)))
+        data-repository (sr/make-data-repository local-dir data-files)]
+    (swap! context (fn [] (RepositoriesSet. mapping-repository data-repository)))))
 
+(defn find-in-mapping [term id]
+  (-> @context
+      (findInMapping term id)))
+
+(defn close-repositories []
+  (try
+    (sr/close @context)
+  (finally (reset! context nil))))
 
 ;; SPARQL requests
 
