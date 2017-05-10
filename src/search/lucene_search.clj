@@ -50,8 +50,9 @@ into memory repository managed by nalyser package.
 
 
 (def cli-options
-  [["-h" "--help" "Print this screen"]
+  [["-h" "--help" "Print this screen" ]
    ["-t" "--terms-file FILE" "File containing terms to search. Single term in line." :default nil :parse-fn #(io/file %)]
+   ["-w" "--wages-file FILE" "File containing wages for properties." :default nil :parse-fn #(io/file %)]
    ["-r" "--repository-dir DIR" "Location where the native repository should be put." :default "." :parse-fn #(io/file %)]])
 
 
@@ -59,14 +60,18 @@ into memory repository managed by nalyser package.
   "Validates input arguments and prepare required objects."
     [args]
   (let [{:keys [options arguments summary errors]} (parse-opts args cli-options)]
+    (log/debug (format "Parsing options:
+  options: %s
+  arguments: %s
+  errors: %s\n" options arguments errors))
     (cond
       (:help options) (println summary)
       errors (println summary)
       (and (some? (get options :terms-file))
-           (some? (get options :mapping-file))
+           (some? (get options :wages-file))
            (some? (get options :repository-dir))
            (> (count arguments) 0))
-      {:terms (:terms-file options) :mapping (:mapping-file options) :repository (:repository-dir options)
+      {:terms (:terms-file options) :wages (:wages-file options) :repository (:repository-dir options)
        :data (apply (fn [rsc] (map #(io/file %) rsc)) [arguments])} ;; converts set of arguments into set of files 
       :else (println summary))))
 
@@ -74,16 +79,18 @@ into memory repository managed by nalyser package.
 "Processes text searching terms from term-file using SPARQL request on given data file.
 All results are printed to standard output as turtle formted file. 
 "
-  (let [{:keys [terms-file data-files repository]} (validate-args args)]
-    (do-main terms-file data-files repository)))
+  (let [{:keys [terms-file data repository wages]} (if-let [vld (validate-args args)]
+                                                     vld
+                                                     (System/exit 0))]
+    (do-main terms-file wages data repository)))
 
 
 (defn do-main
 "Do the main work. 
 
 If was extracted to separate function for testing purposes."
-  [^File terms-file data-files repo-dir]
-  (log/debug (format "do-main arguments: %s %s %s" terms-file data-files repo-dir))
+  [^File terms-file wages-file data-files repo-dir]
+  (log/debug (format "# do-main arguments: %s %s %s" terms-file data-files repo-dir))
   (let [terms (line-seq (io/reader terms-file))
         sparql-string (load-sparql-string "match_terms.rq")
         repo-dir (or repo-dir (apply str (list (System/getProperty "user.dir") "/rdf4j-repository")))
