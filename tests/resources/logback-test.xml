@@ -8,7 +8,7 @@
 	  <target>System.err</target>
 	</appender>
 
-	<!-- <logger name="rdf4j.sparql" level="warn"/> -->
+	<logger name="search.lucene-search" level="debug"/>
 	
 	<root>
 		<level value="warn" />

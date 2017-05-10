@@ -72,12 +72,12 @@
 
 (defn process-analysis
   "The main counting process."
-  [results-model buffer annotator]
+  [results-model buffer]
   (doseq [trm (keys @buffer)
           :let [term trm
                 subjs (keys (get @buffer trm))]]
     (if (= 1 (count subjs))
-      (let [domai-uri (first subjs)]
+      (let [domain-uri (first subjs)]
         (.addAll results-model (v/create-record domain-uri term)))
       (.addAll results-model (v/create-record (-> (apply max-key val (get @buffer trm))
                                                   (key))

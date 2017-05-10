@@ -14,7 +14,8 @@
 ;; this line prevents confusing the deployer with dependencies` pom.xml files
 (alter-var-root #'boot.pod/standard-jar-exclusions (constantly (conj boot.pod/standard-jar-exclusions #"/pom\.xml$")))
 
-(require '[degree9.boot-semver :refer :all])
+(require '[degree9.boot-semver :refer :all]
+         '[clojure.test :as test])
 
 (def version-namespace (symbol "search.version"))
 
@@ -31,8 +32,25 @@
   identity)
 
 (deftask testing "Attach tests/ directory to classpath." []
-  (set-env! :source-paths #(conj % "tests"))
+  (set-env! :source-paths #(conj % "tests/src" "tests/resources"))
   identity)
+
+
+(deftask run-test "Run unit tests"
+  [t test-name NAME str "Test to execute. Run all tests if not given."]
+  *opts*
+  (testing)
+  (println (format "Repositories: %s" (get-env :repositories)))
+  (use '[basic])
+  (if (nil? (:test-name *opts*))
+    (do
+      (println "Run all tests")
+      (test/run-all-tests))
+    (do
+      (println (format "Run test: %s" (:test-name *opts*)))
+      (test/test-var (resolve (symbol (:test-name *opts*)))))))
+
+
 
 (deftask build
   "Build without dependencies" []

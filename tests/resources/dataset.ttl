@@ -7,8 +7,12 @@ data:record1 a :Record ;
     :mock "12"^^xsd:int .
 
 data:record2 a :Record ;
-    :mock "12"^^xsd:int
+    :mock "12"^^xsd:int ;
     :term "term2" .
+
+data:record21 a :Record ;
+    :mock "15"^^xsd:int ;
+    :term2 "term2" .
 
 data:record3 a :Record ;
     :term "term3" ;

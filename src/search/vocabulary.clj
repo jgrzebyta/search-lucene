@@ -35,7 +35,7 @@ Where `subj` is string representation of domain object URI and `term` is a strin
     (.add to-return map-instance RDF/TYPE MappedTerm (r/context-array))
     (.add to-return map-instance SHA1 (.createLiteral vf term-sha1) (r/context-array))
     (.add to-return map-instance SKOS/NOTATION (.createLiteral vf term) (r/context-array))
-    (.add to-return map-instance SKOS/CLOSE_MATCH (.createIRI vf domain-id) (r/context-array))
+    (.add to-return map-instance SKOS/CLOSE_MATCH (.createIRI vf subj) (r/context-array))
 to-return))
 
 
