@@ -1,0 +1,7 @@
+prefix luc: <http://www.openrdf.org/contrib/lucenesail#>
+
+select ?tfString ?sub ?score ?property  where {
+  bind (str(?tf_term) as ?tfString) .
+  (?tfString luc:allMatches luc:property luc:allProperties luc:score) luc:search (?sub ?property ?score) .
+}
+

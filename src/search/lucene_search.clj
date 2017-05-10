@@ -2,7 +2,8 @@
   (:gen-class)
   (:import [org.eclipse.rdf4j.sail.nativerdf NativeStore]
            [org.eclipse.rdf4j.model.impl LinkedHashModelFactory])
-  (:require [clojure.java.io :as io]
+  (:require [clojure.tools.cli :refer [parse-opts]]
+            [clojure.java.io :as io]
             [rdf4j.sparql.processor :as sp]
             [rdf4j.repository :as r]
             [rdf4j.loader :as l :exclude [-main]]
@@ -39,32 +40,44 @@ into memory repository managed by nalyser package.
                    (a/load-dataset rs buffer))) terms)))
 
 
-(cli/defclifn -main
+(def cli-options
+  [["-h" "--help" "Print this screen"]
+   ["-t" "--terms-file FILE" "File containing terms to search. Single term in line." :default nil :parse-fn #(io/file %)]])
+
+
+(defn validate-args
+  "Validates input arguments and prepare required objects."
+    [args]
+  (let [{:keys [options arguments summary errors]} (parse-opts args cli-options)]
+    (cond
+      (:help options) (println summary)
+      errors (println summary)
+      (and (some? (get options :terms-file))
+           (some? (get options :mapping-file))
+           (> (count arguments) 0))
+      {:terms (:terms-file options) :mapping (:mapping-file options)
+       :data (apply (fn [rsc] (map #(io/file %) rsc)) [arguments])} ;; converts set of arguments into set of files 
+      :else (println summary)))
+)
+
+(defn -main [& args]
 "Processes text searching terms from term-file using SPARQL request on given data file.
 All results are printed to standard output as turtle formted file. 
-
-The result records are returned as <http://rdf.adalab-project.org/ontology/adalab-meta/AnnotationStatement> where
-predicate <http://rdf.adalab-project.org/ontology/adalab-meta/annotatedBy> is given in annotator option.
-
-USAGE:
-annotateTF.sh [options] data-file
 "
-  [t terms-file PATH str "Terms contained file"
-   a annotator URI str "URI of annotator"
-   ]
-  (let [terms-file (:terms-file *opts*)
-        terms (line-seq (io/reader terms-file))
-        sparql-file (:sparql-file *opts*)
-        data-file (nth *args* 0)
+  (let [{:keys [terms-file data-files]} (validate-args args)]
+    (do-main terms-file data-files)))
+
+(def do-main [terms-file data-files]
+  (let [terms (line-seq (io/reader terms-file))
+        sparql-file "match_terms.rq"
         repo-dir (apply str (list (System/getProperty "user.dir") "/rdf4j-repository"))
-        repo (make-native-repository repo-dir data-file)
+        repo (make-native-repository repo-dir data-files)
         buf (a/make-buffer)
         results (.createEmptyModel (LinkedHashModelFactory.))]
     (println "# Number of terms: " (count terms))
     (process-terms terms repo sparql-file buf) ;; load dataset
     (a/process-counting buf)
-    (a/process-analysis results buf (:annotator *opts*))
-    (v/print-model results))
-  )
+    (a/process-analysis results)
+    (v/print-model results)))
   
 

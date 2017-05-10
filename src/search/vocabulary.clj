@@ -6,56 +6,37 @@
   (:import [java.io OutputStreamWriter]
            [org.eclipse.rdf4j.rio Rio RDFFormat]
            [org.eclipse.rdf4j.model Model IRI]
-           [org.eclipse.rdf4j.model.vocabulary RDF RDFS]
+           [org.eclipse.rdf4j.model.vocabulary RDF RDFS SKOS]
            [org.eclipse.rdf4j.model.impl LinkedHashModelFactory]))
 
 
-(def value-factory (u/value-factory))
+(def vf (u/value-factory))
 
-(def NS-RESOURCE "http://rdf.adalab-project.org/resource/annotation/")
+;; Mapping vocabulary
 
-(def NS-ADALAB "http://rdf.adalab-project.org/ontology/adalab/")
+(def NS-INST "urn:map/")
 
-(def NS-ADALAB-META "http://rdf.adalab-project.org/ontology/adalab-meta/")
+(def ^IRI MappedTerm (.createIRI vf NS-INST "MappedTerm"))
 
-(def ^IRI TRANSCRIPTION-FACTOR (.createIRI value-factory NS-ADALAB "transcriptionFactor"))
-
-(def ^IRI ANNOTATED-WITH (.createIRI value-factory NS-ADALAB-META "annotatedWith"))
-
-(def ^IRI ANNOTATION-STATEMENT (.createIRI value-factory NS-ADALAB-META "AnnotationStatement"))
-
-(def ^IRI ANNOTATED-BY (.createIRI value-factory NS-ADALAB-META "annotatedBy"))
-
-(defn create-annotation-subject
-  "Creates IRI formated:
-  <http://rdf.adalab-project.org/resource/annotation/ID> where
-
-  ID = (SHA1 (STR SUBJ rdfs:type adalab:transcriptionFactor ANNOTATOR)).
-  "
-  [subj annotator]
-  (let [id (->
-            (str (.toString subj) (.toString RDF/TYPE) (.toString TRANSCRIPTION-FACTOR) (.toString annotator))
-            (bch/sha1)
-            (bytes->hex))]
-    (.createIRI value-factory NS-RESOURCE id)))
-
+(def ^IRI SHA1 (.createIRI vf NS-INST "sha1"))
 
 (defn create-record
-  "Creates all statements for a single record"
-  [subj annotator label]
-  (let [subj-uri (.createIRI value-factory subj)
-        ^Model model (->
-                      (LinkedHashModelFactory.)
-                      (.createEmptyModel))
-        ann-node (create-annotation-subject subj annotator)]
-    (.add model subj-uri RDF/TYPE TRANSCRIPTION-FACTOR (r/context-array))
-    (.add model subj-uri ANNOTATED-WITH ann-node (r/context-array))
-    (.add model ann-node RDF/SUBJECT subj-uri (r/context-array))
-    (.add model ann-node RDF/PREDICATE RDF/TYPE (r/context-array))
-    (.add model ann-node RDF/OBJECT TRANSCRIPTION-FACTOR (r/context-array))
-    (.add model ann-node ANNOTATED-BY (.createIRI value-factory annotator) (r/context-array))
-    (.add model ann-node RDFS/LABEL (.createLiteral value-factory label) (r/context-array))
-    model))
+  "Creates all mapping statements for a single record: `subj` and `term`.
+
+Where `subj` is string representation of domain object URI and `term` is a string representation of term. 
+"
+  [subj term]
+  (let [term-sha1 (-> term
+                        (bch/sha1)
+                        (bytes->hex))
+          map-instance (.createIRI vf NS-INST term-sha1)
+          to-return (-> (LinkedHashModelFactory.)
+                        (.createEmptyModel))]
+    (.add to-return map-instance RDF/TYPE MappedTerm (r/context-array))
+    (.add to-return map-instance SHA1 (.createLiteral vf term-sha1) (r/context-array))
+    (.add to-return map-instance SKOS/NOTATION (.createLiteral vf term) (r/context-array))
+    (.add to-return map-instance SKOS/CLOSE_MATCH (.createIRI vf domain-id) (r/context-array))
+to-return))
 
 
 (defn print-model

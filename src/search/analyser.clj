@@ -77,8 +77,8 @@
           :let [term trm
                 subjs (keys (get @buffer trm))]]
     (if (= 1 (count subjs))
-      (let [subject (first subjs)]
-        (.addAll results-model (v/create-record subject annotator term)))
+      (let [domai-uri (first subjs)]
+        (.addAll results-model (v/create-record domain-uri term)))
       (.addAll results-model (v/create-record (-> (apply max-key val (get @buffer trm))
                                                   (key))
-                                              annotator term)))))
+                                              term)))))
