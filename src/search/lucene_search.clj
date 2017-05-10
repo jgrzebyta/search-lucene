@@ -3,7 +3,7 @@
   (:import [java.io File]
            [java.nio.file Paths Path]
            [org.eclipse.rdf4j.sail.nativerdf NativeStore]
-           [org.eclipse.rdf4j.model.impl LinkedHashModelFactory])
+           [org.eclipse.rdf4j.model.impl LinkedHashModelFactory LinkedHashModel])
   (:require [clojure.tools.cli :refer [parse-opts]]
             [clojure.java.io :as io]
             [rdf4j.sparql.processor :as sp]
@@ -30,6 +30,15 @@
       (assert (> cnt 0)))
     repo))
 
+(defn make-mapping-model ^LinkedHashModel [^File file]
+  (let [model (-> (LinkedHashModelFactory.)
+                  (.createEmptyModel))
+        mem-repo (r/make-mem-repository)]
+    ;; load data into memory
+    (l/load-data mem-repo file)
+    (r/with-open-repository [cnx mem-repo]
+      (.addAll model (doall (u/iter-seq (.getStatements cnx nil nil nil false (r/context-array))))))
+    model))
 
 (defn make-binding [term]
   {:tf_term term})
@@ -53,6 +62,7 @@ into memory repository managed by nalyser package.
   [["-h" "--help" "Print this screen" ]
    ["-t" "--terms-file FILE" "File containing terms to search. Single term in line." :default nil :parse-fn #(io/file %)]
    ["-w" "--wages-file FILE" "File containing wages for properties." :default nil :parse-fn #(io/file %)]
+   ["-m" "--mapping-file FILE" "File containing mapping data." :default nil :parse-fn #(io/file %)]
    ["-r" "--repository-dir DIR" "Location where the native repository should be put." :default "." :parse-fn #(io/file %)]])
 
 
@@ -69,27 +79,29 @@ into memory repository managed by nalyser package.
       errors (println summary)
       (and (some? (get options :terms-file))
            (some? (get options :wages-file))
+           (some? (get options :mapping-file))
            (some? (get options :repository-dir))
            (> (count arguments) 0))
+      ;; converts set of arguments into set of files 
       {:terms (:terms-file options) :wages (:wages-file options) :repository (:repository-dir options)
-       :data (apply (fn [rsc] (map #(io/file %) rsc)) [arguments])} ;; converts set of arguments into set of files 
+       :data (apply (fn [rsc] (map #(io/file %) rsc)) [arguments]) :mapping (:mapping-file options)} 
       :else (println summary))))
 
 (defn -main [& args]
 "Processes text searching terms from term-file using SPARQL request on given data file.
-All results are printed to standard output as turtle formted file. 
+All results are printed to standard output as turtle formated file. 
 "
-  (let [{:keys [terms-file data repository wages]} (if-let [vld (validate-args args)]
-                                                     vld
-                                                     (System/exit 0))]
-    (do-main terms-file wages data repository)))
+  (let [{:keys [terms-file data repository wages mapping]} (if-let [vld (validate-args args)]
+                                                             vld
+                                                             (System/exit 0))]
+    (do-main terms-file wages mapping data repository)))
 
 
 (defn do-main
 "Do the main work. 
 
 If was extracted to separate function for testing purposes."
-  [^File terms-file wages-file data-files repo-dir]
+  [^File terms-file ^File wages-file ^File mapping data-files ^File repo-dir]
   (log/debug (format "# do-main arguments: %s %s %s" terms-file data-files repo-dir))
   (let [terms (line-seq (io/reader terms-file))
         sparql-string (load-sparql-string "match_terms.rq")

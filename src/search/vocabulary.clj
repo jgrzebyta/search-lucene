@@ -1,13 +1,15 @@
 (ns search.vocabulary
-  (:require [rdf4j.utils :as u]
+  (:require [clojure.tools.logging :as log]
+            [rdf4j.utils :as u]
             [rdf4j.repository :as r]
             [buddy.core.hash :as bch]
             [buddy.core.codecs :refer [bytes->hex]])
   (:import [java.io OutputStreamWriter]
            [org.eclipse.rdf4j.rio Rio RDFFormat]
+           [org.eclipse.rdf4j.model.util Models]
            [org.eclipse.rdf4j.model Model IRI]
            [org.eclipse.rdf4j.model.vocabulary RDF RDFS SKOS]
-           [org.eclipse.rdf4j.model.impl LinkedHashModelFactory]))
+           [org.eclipse.rdf4j.model.impl LinkedHashModelFactory LinkedHashModel]))
 
 
 (def vf (u/value-factory))
@@ -43,3 +45,26 @@ to-return))
   "Prints a model to Turtle format."
   [^Model model]
   (Rio/write model (OutputStreamWriter. System/out) RDFFormat/TURTLE))
+
+(defn search-mapping [^LinkedHashModel mapping term]
+  (let [vf (.getValueFactory mapping)
+        literal (.createLiteral vf term)
+        mod (.filter mapping nil SKOS/NOTATION literal (r/context-array))
+        subj (Models/subjectIRIs mod)
+        cnt (count subj)]
+    (log/debug (format "Number of items: %d" (count mod)))
+    (cond
+      (> cnt 1)
+      (throw (ex-info "Multiple machings for term" {:term term :matches subj}))
+      (= cnt 0)
+      (throw (ex-info "No matches for term" {:term term})))
+    (log/debug (format "Fount subject for term: %s -- $s" term (first subj)))
+    (->
+     (.filter (first subj) SKOS/CLOSE_MATCH nil (r/context-array))
+     (Models/objectIRIs)
+     (fn [x] (let [cnt1 (count x)]
+               (if (= cnt1 1)
+                 (first x)
+                 (throw (ex-info "Wrong triple for object" {:objects x :count cnt1})))))
+    )))
+
