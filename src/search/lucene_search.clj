@@ -1,20 +1,20 @@
 (ns search.lucene-search
   (:gen-class)
   (:import [java.io File]
-           [java.util Collection]
            [java.nio.file Paths Path]
-           [org.eclipse.rdf4j.sail.nativerdf NativeStore]
+           [java.util Collection]
            [org.eclipse.rdf4j.model.impl LinkedHashModelFactory LinkedHashModel]
-           [org.eclipse.rdf4j.repository.sail SailRepository])
-  (:require [clojure.tools.cli :refer [parse-opts]]
-            [clojure.java.io :as io]
-            [rdf4j.sparql.processor :as sp]
-            [rdf4j.repository :as r]
+           [org.eclipse.rdf4j.repository.sail SailRepository]
+           [org.eclipse.rdf4j.sail.nativerdf NativeStore])
+  (:require [clojure.java.io :as io]
+            [clojure.tools.cli :refer [parse-opts]]
+            [clojure.tools.logging :as log]
             [rdf4j.loader :as l :exclude [-main]]
+            [rdf4j.repository :as r]
+            [rdf4j.sparql.processor :as sp]
             [rdf4j.utils :as u]
-            [search.vocabulary :as v]
             [search.analyser :as a]
-            [clojure.tools.logging :as log]))
+            [search.vocabulary :as v]))
 
 (declare do-main load-sparql-string)
 

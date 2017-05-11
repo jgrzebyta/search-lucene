@@ -12,7 +12,7 @@
 	<logger name="search.analyser" level="debug"/>
 	
 	<root>
-		<level value="warn" />
+		<level value="info" />
 		<appender-ref ref="STDERR" />
 	</root>
 </configuration>

@@ -1,18 +1,19 @@
 (ns search.vocabulary
-  (:require [clojure.tools.logging :as log]
-            [rdf4j.utils :as u]
+  (:require [buddy.core.codecs :refer [bytes->hex]]
+            [buddy.core.hash :as bch]
+            [clojure.tools.logging :as log]
             [rdf4j.repository :as r]
             [rdf4j.sparql.processor :as s]
-            [buddy.core.hash :as bch]
-            [buddy.core.codecs :refer [bytes->hex]])
+            [rdf4j.utils :as u])
   (:import [java.io OutputStreamWriter]
-           [org.eclipse.rdf4j.rio Rio RDFFormat]
-           [org.eclipse.rdf4j.model.util Models]
            [org.eclipse.rdf4j.model Model IRI Value]
+           [org.eclipse.rdf4j.model.impl LinkedHashModelFactory LinkedHashModel]
+           [org.eclipse.rdf4j.model.util Models]
            [org.eclipse.rdf4j.model.vocabulary RDF RDFS SKOS XMLSchema]
            [org.eclipse.rdf4j.repository.sail SailRepository]
-           [org.eclipse.rdf4j.model.impl LinkedHashModelFactory LinkedHashModel]))
-(declare find-mapping-rq find-wage-rq)
+           [org.eclipse.rdf4j.rio Rio RDFFormat]))
+
+(declare find-mapping-rq find-weights-rq)
 
 (def vf (u/value-factory))
 
@@ -24,7 +25,7 @@
 
 (def ^IRI SHA1 (.createIRI vf NS-INST "sha1"))
 
-(def ^IRI WAGE (.createIRI vf NS-INST "wage"))
+(def ^IRI WEIGHT (.createIRI vf NS-INST "weight"))
 
 (defn create-record
   "Creates all mapping statements for a single record: `subj` and `term`.
@@ -65,19 +66,19 @@ to-return))
                           (.getValue "term")
                           (.stringValue))})))
 
-(defn search-wage [^SailRepository mapping property]
+(defn search-weight [^SailRepository mapping property]
   (let [prop-str (if (instance? Value property) (.stringValue property) property)]
-    (s/with-sparql [:sparql find-wage-rq :result rs :repository mapping :binding {:in_prop prop-str}]
+    (s/with-sparql [:sparql find-weights-rq :result rs :repository mapping :binding {:in_prop prop-str}]
       (cond
-        (> (count rs) 1) (throw (ex-info "Multiple wages for single property." {:property prop-str :mappings (doall rs)}))
+        (> (count rs) 1) (throw (ex-info "Multiple weights for single property." {:property prop-str :mappings (doall rs)}))
         (= (count rs) 0) 1.0
         :default {:predicate (-> (first rs)
                                   (.getValue "prop"))
-                  :wage (-> (first rs)
-                            (.getValue "wage")
-                            (.floatValue))
+                  :weight (-> (first rs)
+                              (.getValue "weight")
+                              (.floatValue))
                   :wage-node (-> (first rs)
-                                 (.getValue "vage_node"))}))))
+                                 (.getValue "weight_node"))}))))
 
 (defn copy-to-model
 "Copy all triples from `from` Repository to `to` Model with `subject`.
@@ -107,17 +108,17 @@ skos:closeMatch ?subj .
 ")
 
 
-(def ^:private find-wage-rq
+(def ^:private find-weights-rq
 "prefix map: <http://rdf.adalab-project/ontology/mapping/>
  prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
-select ?wage_node ?prop ?wage {
+select ?weight_node ?prop ?weight {
 bind (iri(?in_prop) as ?prop) .
 
-?wage_node a map:Wages ;
-map:wages [ rdf:predicate ?prop ;
-            map:wage ?wage
-          ] .
+?weight_node a map:WeightSet ;
+  map:weights [ rdf:predicate ?prop ;
+                map:weight ?weight
+              ] .
 } 
 ")
 

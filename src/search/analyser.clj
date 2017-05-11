@@ -1,13 +1,13 @@
 (ns search.analyser
   (:import [org.eclipse.rdf4j.model.vocabulary RDFS]
            [org.eclipse.rdf4j.query.algebra.evaluation QueryBindingSet])
-  (:require [search.vocabulary :as v]
-            [clojure.pprint :as pp]
+  (:require [clojure.pprint :as pp]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [rdf4j.loader :as l :exclude [-main]]
             [rdf4j.repository :as r]
             [rdf4j.utils :as u]
-            [clojure.tools.logging :as log]
-            [rdf4j.loader :as l :exclude [-main]]))
+            [search.vocabulary :as v]))
 
 (defn make-buffer
  "Creates atomised map."

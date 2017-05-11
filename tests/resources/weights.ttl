@@ -7,6 +7,6 @@
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
 
-:current_wages a map:Wages ;
-  map:wages [ rdf:predicate :term ; map:wage "1.0"^^xsd:float ] ,
-            [ rdf:predicate :term2 ; map:wage "0.5"^^xsd:float ] .
+:current_weights a map:WeightSet ;
+  map:weights [ rdf:predicate :term ; map:weight "1.5"^^xsd:float ] ,
+              [ rdf:predicate :term2 ; map:weight "0.5"^^xsd:float ] .
