@@ -16,11 +16,13 @@
 
 ;; Mapping vocabulary
 
-(def NS-INST "urn:map/")
+(def NS-INST "http://rdf.adalab-project/ontology/mapping/")
 
 (def ^IRI MappedTerm (.createIRI vf NS-INST "MappedTerm"))
 
 (def ^IRI SHA1 (.createIRI vf NS-INST "sha1"))
+
+(def ^IRI WAGE (.createIRI vf NS-INST "wage"))
 
 (defn create-record
   "Creates all mapping statements for a single record: `subj` and `term`.

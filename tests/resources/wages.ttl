@@ -1,7 +1,7 @@
 # This file provides wages information. I.e. How important is a property compared with another one.
 
 @prefix : <http://example.org/> .
-@prefix map: <urn:map/> .
+@prefix map: <http://rdf.adalab-project/ontology/mapping/> .
 @prefix data: <http://example.org/data#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
