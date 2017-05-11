@@ -1,0 +1,3 @@
+*	text eol=auto
+*.clj	text eol=lf
+*.ttl	text eol=lf
