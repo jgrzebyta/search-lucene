@@ -6,9 +6,12 @@
             [clojure.string :as str]
             [rdf4j.repository :as r]
             [rdf4j.utils :as u]
+            [clojure.tools.logging :as log]
             [rdf4j.loader :as l :exclude [-main]]))
 
-(defn make-buffer []
+(defn make-buffer
+ "Creates atomised map."
+  []
   (atom {}))
 
 (def value-factory (u/value-factory))
@@ -72,7 +75,8 @@
 
 (defn process-analysis
   "The main counting process."
-  [results-model buffer]
+  [mapping-repo results-model buffer]
+  ;;(log/debug "Buffer: \n" (with-out-str (pp/pprint @buffer)))
   (doseq [trm (keys @buffer)
           :let [term trm
                 subjs (keys (get @buffer trm))]]

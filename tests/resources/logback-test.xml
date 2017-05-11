@@ -9,6 +9,7 @@
 	</appender>
 
 	<logger name="search.lucene-search" level="debug"/>
+	<logger name="search.analyser" level="debug"/>
 	
 	<root>
 		<level value="warn" />
