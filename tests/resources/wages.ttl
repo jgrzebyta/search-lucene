@@ -8,5 +8,5 @@
 
 
 :current_wages a map:Wages ;
-  map:wages ( [ rdf:predicate :term ; map:wage "1.0"^^xsd:float ] ,
-              [ rdf:predicate :term2 ; map:wage "0.5"^^xsd:float ] ) .
+  map:wages [ rdf:predicate :term ; map:wage "1.0"^^xsd:float ] ,
+            [ rdf:predicate :term2 ; map:wage "0.5"^^xsd:float ] .
