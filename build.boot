@@ -28,8 +28,7 @@
 (deftask develop
   "Build SNAPSHOT version of jar"
   []
-  (version :develop true :pre-release 'snapshot)
-  identity)
+  (version :develop true :pre-release 'snapshot))
 
 (deftask testing "Attach tests/ directory to classpath." []
   (set-env! :source-paths #(conj % "tests/src" "tests/resources"))
