@@ -6,7 +6,7 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-
 :current_weights a map:WeightSet ;
   map:weights [ rdf:predicate :term ; map:weight "1.5"^^xsd:float ] ,
-              [ rdf:predicate :term2 ; map:weight "0.5"^^xsd:float ] .
+              [ rdf:predicate :term2 ; map:weight "0.5"^^xsd:float ] ,
+	      [ rdf:predicate :term50 ; map:weight "3"^^xsd:float ] .

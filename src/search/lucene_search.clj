@@ -28,7 +28,7 @@
         repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs"))]
     (l/load-multidata repo dataset)
     (let [cnt (count (r/get-all-statements repo))]
-      (binding [*out* *err*] (printf "Loaded [%d] statements\n" cnt))
+      (log/debugf "Loaded [%d] statements\n" cnt)
       (assert (> cnt 0)))
     repo))
 
@@ -36,9 +36,6 @@
   (let [mem-repo (r/make-mem-repository)]
     (l/load-data mem-repo file)
     mem-repo))
-
-(defn make-binding [term]
-  {:tf_term term})
 
 (defn process-terms
   "
@@ -53,12 +50,12 @@
   [terms mapping-repository data-repository buffer result]
   (let [sparql (load-sparql-string "match_terms.rq")]
     (dorun (pmap (fn [t]
-                   (binding [*out* *err*] (printf "  Process term: %s\n" t))
+                   (log/infof "  Process term: %s" t)
                    ;; in the first instance try to find term in mapping repository
                    (if-let [{:keys [subject mapping-node term]} (v/search-mapping mapping-repository t)]
                      (v/copy-to-model mapping-node mapping-repository result)   ;; coppy mapping triples to final model
-                     (sp/with-sparql [:sparql sparql :result rs :binding (make-binding t) :repository data-repository]
-                       (a/load-dataset rs buffer)))) terms))))
+                     (sp/with-sparql [:sparql sparql :result rs :binding {:tf_term t} :repository data-repository]
+                       (a/load-dataset mapping-repository rs buffer)))) terms))))
 
 (defn load-sparql-string ^String [^String file-location]
   (-> (io/resource file-location)
@@ -114,10 +111,12 @@ If was extracted to separate function for testing purposes."
         repo (make-native-repository repo-dir data-files)
         buf (a/make-buffer)
         results (v/make-empty-model)]
-    (println "# Number of terms: " (count terms))
+    (log/infof "Number of terms: %d" (count terms))
     (process-terms terms mapping-repo repo buf results) ;; process searching in mapping repository and data repository
     (a/process-counting buf)
     (a/process-analysis mapping-repo results buf)
+    ;; copy weights from mapping repo to the output model
+    (doall (map #(v/copy-to-model % mapping-repo results) (v/find-weights-subjects mapping-repo)))
     (v/print-model results)))
   
 

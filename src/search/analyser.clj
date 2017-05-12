@@ -16,14 +16,12 @@
 
 (def value-factory (u/value-factory))
 
-(def norm-matrix {:name 2 :synonym 0.1 :longName 1.5})
-
 (defn normalize-score
   "Multiplies the score by weight defined in matrix based on predicate."
-  [score matrix predicate]
-  (* score (get matrix (keyword predicate) 1.0)))
+  [score mapping-repository predicate]
+  (* score (get (v/search-weight mapping-repository predicate) :weight)))
 
-(defn process-binding [^QueryBindingSet b buffer]
+(defn process-binding [mapping-repository ^QueryBindingSet b buffer]
   (let [term (-> b
                  (.getValue "tfString")
                  (.stringValue))
@@ -32,24 +30,21 @@
                     (.stringValue))
         property (-> b
                      (.getValue "property")
-                     (.stringValue)
-                     (str/replace #"\S*/" "") ;; returns string after last / character
-                     )
+                     (.stringValue))
         score (-> b
                   (.getValue "score")
-                  (.stringValue)
-                  (read-string)
-                  (normalize-score norm-matrix property))
+                  (.floatValue)
+                  (normalize-score mapping-repository property))
         sub-sc (assoc {} :score score :term term :property property)]
-    (binding [*out* *err*] (printf "Term: %s -- %s\n" term sub-sc))
+    (log/debugf "Term: %s -- %s\n" term sub-sc)
     (swap! buffer #(update-in % [term subject] (fnil conj (hash-set)) sub-sc))))
 
 (defn load-dataset
   "Populates buffer map "
-  [dataset buffer]
+  [mappings-repository dataset buffer]
   (loop [rc dataset]
     (when-let [r (first rc)]
-      (process-binding r buffer)
+      (process-binding mappings-repository r buffer)
       (recur (rest rc)))))
 
 

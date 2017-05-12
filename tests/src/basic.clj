@@ -9,7 +9,8 @@
             [rdf4j.loader :as l]
             [rdf4j.repository :as r]
             [search.vocabulary :as voc]
-            [search.lucene-search :as m]))
+            [search.lucene-search :as m]
+            [clojure.string :as str]))
 
 (t/deftest test-do-main
   (t/testing "Test do-main"
@@ -18,15 +19,16 @@
           mapping-file (io/file "tests/resources/weights.ttl")
           data-files (list (-> (io/file "tests/resources/dataset.ttl")
                                (.toPath)))]
-      (log/info (format "Temp directory location: %s" (.toString tmp-dir)))
+      (log/debugf "Temp directory location: %s" (.toString tmp-dir))
       (m/do-main terms-file mapping-file data-files tmp-dir)
       (FileUtils/deleteDirectory (.toFile tmp-dir)))))
 
 
 (t/deftest test-weights
-  (t/testing "Searching weights"
-    (let [weight-file (io/file "tests/resources/weights.ttl")
-          repository (r/make-mem-repository)]
+  ;; prepare testing application context
+  (let [weight-file (io/file "tests/resources/weights.ttl")
+        repository (r/make-mem-repository)]
+    (t/testing "Searching weights"
       (l/load-data repository weight-file)
       (log/info "Data loaded")
       (let [mapping (voc/search-weight repository "http://example.org/term")]
@@ -34,4 +36,10 @@
         (t/is (= (:weight mapping) 1.5))
         (log/info (with-out-str (pp/pprint mapping))))
       )
-    ))
+    (t/testing "Find weights subjects"
+      (let [subj (voc/find-weights-subjects repository)]
+        (log/debugf "Subjects: %s" (apply list subj))
+        (t/is (= 1 (count subj)))
+        (t/is (-> (first subj)
+                  (str/includes? "current_weights"))))
+      )))

@@ -6,7 +6,7 @@
             [rdf4j.sparql.processor :as s]
             [rdf4j.utils :as u])
   (:import [java.io OutputStreamWriter]
-           [org.eclipse.rdf4j.model Model IRI Value]
+           [org.eclipse.rdf4j.model Model IRI Value BNode]
            [org.eclipse.rdf4j.model.impl LinkedHashModelFactory LinkedHashModel]
            [org.eclipse.rdf4j.model.util Models]
            [org.eclipse.rdf4j.model.vocabulary RDF RDFS SKOS XMLSchema]
@@ -26,6 +26,8 @@
 (def ^IRI SHA1 (.createIRI vf NS-INST "sha1"))
 
 (def ^IRI WEIGHT (.createIRI vf NS-INST "weight"))
+
+(def ^IRI WEIGHT-SET (.createIRI vf NS-INST "WeightSet"))
 
 (defn create-record
   "Creates all mapping statements for a single record: `subj` and `term`.
@@ -89,10 +91,39 @@ create {
  ?subject ?x ?y
 } where {
  ?subject ?x ?y
-}"
-  [^String subject ^SailRepository from ^Model to]
+  }"
+  [subject ^SailRepository from ^Model to]
+
+  (log/debugf "Copy statements with subject : %s" subject)
   (r/with-open-repository [cnx from]
-    (.addAll to (-> (.getStatements cnx subject nil nil false (r/context-array))))))
+    (let [vf (u/value-factory cnx)
+          subj-iri (if (string? subject)
+                     (.createIRI vf subject) subject)]
+      (doall (map #(do
+                     (log/tracef "\t\tAdd statement: %s" %)
+                     (.add to %)                               ;; Simple add statement to model `to`
+                     (when (instance? BNode (.getObject %))    ;; Process deep copy: i.e. if object is a `BNode` than recursively call the function 
+                       (copy-to-model (.getObject %) from to)))
+                  (-> (.getStatements cnx subj-iri nil nil false (r/context-array))
+                      (u/iter-seq))))
+      )))
+
+(defn find-weights-subjects
+  "Returns a collection of subjects following rule:
+
+  ?subject rdf:type map:WeightSet
+
+  "
+  [^SailRepository mapping-repository]
+  {:pre (instance? SailRepository mapping-repository)}
+  (r/with-open-repository [cnx mapping-repository]
+    (doall
+     (map #(-> %
+               (.getSubject)
+               (.stringValue)) (-> (.getStatements cnx nil RDF/TYPE WEIGHT-SET true (r/context-array))
+                                   (u/iter-seq)
+                                   )))))
+
 
 (def ^:private find-mapping-rq
 "prefix skos: <http://www.w3.org/2004/02/skos/core#>
@@ -127,4 +158,6 @@ bind (iri(?in_prop) as ?prop) .
   (doto
    (.createEmptyModel (LinkedHashModelFactory.))
    (.setNamespace SKOS/NS)
-   (.setNamespace "map" NS-INST)))
+   (.setNamespace "map" NS-INST)
+   (.setNamespace RDF/NS)
+   (.setNamespace XMLSchema/NS)))
