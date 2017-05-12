@@ -20,7 +20,7 @@
 
 (defn make-native-repository
   "Populates native repository with gene-annotation data. In the next step it will be done text searching on that."
-    [^Path dir dataset]
+    [^Path dir ^Collection dataset]
   (let [dir (if-not (-> (.toFile dir)
                           (.exists))
               (u/create-dir dir)
@@ -86,17 +86,19 @@
            (> (count arguments) 0))
       ;; converts set of arguments into set of files 
       {:terms (:terms-file options)  :repository (:repository-dir options)
-       :data (apply (fn [rsc] (map #(io/file %) rsc)) [arguments]) :mapping (:mapping-file options)} 
+       :data (apply (fn [rsc] (map #(->(io/file %)
+                                       (.toPath)) rsc)) [arguments]) :mapping (:mapping-file options)} 
       :else (println summary))))
 
 (defn -main [& args]
 "Processes text searching terms from term-file using SPARQL request on given data file.
 All results are printed to standard output as turtle formated file. 
 "
-  (let [{:keys [terms-file data repository mapping]} (if-let [vld (validate-args args)]
+  (let [{:keys [terms data repository mapping]} (if-let [vld (validate-args args)]
                                                              vld
                                                              (System/exit 0))]
-    (do-main terms-file mapping data repository)))
+    (do-main terms mapping data repository)
+    (System/exit 0)))
 
 
 (defn do-main
@@ -108,7 +110,7 @@ If was extracted to separate function for testing purposes."
   (let [terms (line-seq (io/reader terms-file))
         mapping-repo (make-mapping-repository mapping-file)
         repo-dir (or repo-dir (apply str (list (System/getProperty "user.dir") "/rdf4j-repository")))
-        repo (make-native-repository repo-dir data-files)
+        repo (make-native-repository (.toPath repo-dir) data-files)
         buf (a/make-buffer)
         results (v/make-empty-model)]
     (log/infof "Number of terms: %d" (count terms))
