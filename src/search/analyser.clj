@@ -69,14 +69,14 @@
 
 (defn process-analysis
   "The main counting process."
-  [mapping-repo results-model buffer]
+  [mapping-repo buffer]
   ;;(log/debug "Buffer: \n" (with-out-str (pp/pprint @buffer)))
   (doseq [trm (keys @buffer)
           :let [term trm
                 subjs (keys (get @buffer trm))]]
     (if (= 1 (count subjs))
       (let [domain-uri (first subjs)]
-        (.addAll results-model (v/create-record domain-uri term)))
-      (.addAll results-model (v/create-record (-> (apply max-key val (get @buffer trm))
+        (v/add-to-model mapping-repo (v/create-record domain-uri term)))
+      (v/add-to-model mapping-repo (v/create-record (-> (apply max-key val (get @buffer trm))
                                                   (key))
                                               term)))))

@@ -5,13 +5,15 @@
             [rdf4j.repository :as r]
             [rdf4j.sparql.processor :as s]
             [rdf4j.utils :as u])
-  (:import [java.io OutputStreamWriter]
-           [org.eclipse.rdf4j.model Model IRI Value BNode]
+  (:import [java.lang Iterable]
+           [java.io OutputStreamWriter]
+           [org.eclipse.rdf4j.model Model IRI Value BNode Statement]
            [org.eclipse.rdf4j.model.impl LinkedHashModelFactory LinkedHashModel]
            [org.eclipse.rdf4j.model.util Models]
            [org.eclipse.rdf4j.model.vocabulary RDF RDFS SKOS XMLSchema]
            [org.eclipse.rdf4j.repository.sail SailRepository]
-           [org.eclipse.rdf4j.rio Rio RDFFormat]))
+           [org.eclipse.rdf4j.rio Rio RDFFormat WriterConfig]
+           [org.eclipse.rdf4j.rio.helpers BasicWriterSettings]))
 
 (declare find-mapping-rq find-weights-rq)
 
@@ -48,10 +50,14 @@ Where `subj` is string representation of domain object URI and `term` is a strin
 to-return))
 
 
-(defn print-model
+(defn print-repository
   "Prints a model to Turtle format."
-  [^Model model]
-  (Rio/write model (OutputStreamWriter. System/out) RDFFormat/TURTLE))
+  [^SailRepository repository]
+  (let [writer-config (doto
+                          (WriterConfig.)
+                        (.set BasicWriterSettings/PRETTY_PRINT true)
+                        (.set BasicWriterSettings/RDF_LANGSTRING_TO_LANG_LITERAL false))]
+  (Rio/write (r/get-all-statements repository) (OutputStreamWriter. System/out) RDFFormat/TURTLE writer-config)))
 
 
 (defn search-mapping ^Value [^SailRepository mapping ^String term]
@@ -82,31 +88,25 @@ to-return))
                   :wage-node (-> (first rs)
                                  (.getValue "weight_node"))}))))
 
-(defn copy-to-model
-"Copy all triples from `from` Repository to `to` Model with `subject`.
 
-The relevant SPARQL query is:
+(defn add-to-model
+  "Add `statements` from `Iterable`<`Statement`> type into `SailRepository`.
+   Method does loading within transaction.
+"
+  [^SailRepository repository ^Iterable statements]
+  {:pre [(instance? Iterable statements)]}
+  
+  (r/with-open-repository [cnx repository]
+    (try
+      (.begin cnx)
+      (.add cnx statements (r/context-array))
+      (catch Exception e
+        (do
+          (.rollback cnx)
+          (throw (ex-info "Some error" {:cause e}))))
+      (finally (.commit cnx)))))
 
-create {
- ?subject ?x ?y
-} where {
- ?subject ?x ?y
-  }"
-  [subject ^SailRepository from ^Model to]
 
-  (log/debugf "Copy statements with subject : %s" subject)
-  (r/with-open-repository [cnx from]
-    (let [vf (u/value-factory cnx)
-          subj-iri (if (string? subject)
-                     (.createIRI vf subject) subject)]
-      (doall (map #(do
-                     (log/tracef "\t\tAdd statement: %s" %)
-                     (.add to %)                               ;; Simple add statement to model `to`
-                     (when (instance? BNode (.getObject %))    ;; Process deep copy: i.e. if object is a `BNode` than recursively call the function 
-                       (copy-to-model (.getObject %) from to)))
-                  (-> (.getStatements cnx subj-iri nil nil false (r/context-array))
-                      (u/iter-seq))))
-      )))
 
 (defn find-weights-subjects
   "Returns a collection of subjects following rule:
@@ -152,12 +152,3 @@ bind (iri(?in_prop) as ?prop) .
               ] .
 } 
 ")
-
-
-(defn make-empty-model []
-  (doto
-   (.createEmptyModel (LinkedHashModelFactory.))
-   (.setNamespace SKOS/NS)
-   (.setNamespace "map" NS-INST)
-   (.setNamespace RDF/NS)
-   (.setNamespace XMLSchema/NS)))

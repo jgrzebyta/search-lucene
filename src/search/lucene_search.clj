@@ -3,7 +3,6 @@
   (:import [java.io File]
            [java.nio.file Paths Path]
            [java.util Collection]
-           [org.eclipse.rdf4j.model.impl LinkedHashModelFactory LinkedHashModel]
            [org.eclipse.rdf4j.repository.sail SailRepository]
            [org.eclipse.rdf4j.sail.nativerdf NativeStore])
   (:require [clojure.java.io :as io]
@@ -41,21 +40,20 @@
   "
   Process collection of `terms` using `pmap`. 
   In the first instance try to find mapping in the `mapping-repository`. 
-  If mapping was found than load that directly into `result` `Model`.
+  If mapping was found than do nothing.
 
   Else ...
   Do text searching in the `data-repository` and load result into atomised `Map`-based
   buffer `a/make-buffer`.
   "
-  [terms mapping-repository data-repository buffer result]
+  [terms mapping-repository data-repository buffer]
   {:pre [(seq? terms)]}
   
   (let [sparql (load-sparql-string "match_terms.rq")]
     (dorun (pmap (fn [t]
                    (log/infof "  Process term: %s" t)
                    ;; in the first instance try to find term in mapping repository
-                   (if-let [{:keys [subject mapping-node term]} (v/search-mapping mapping-repository t)]
-                     (v/copy-to-model mapping-node mapping-repository result)   ;; coppy mapping triples to final model
+                   (when-not (v/search-mapping mapping-repository t)
                      (sp/with-sparql [:sparql sparql :result rs :binding {:tf_term t} :repository data-repository]
                        (a/load-dataset mapping-repository rs buffer)))) terms))))
 
@@ -117,14 +115,11 @@ If was extracted to separate function for testing purposes."
                         (instance? Path repo-dir) repo-dir
                         (instance? String repo-dir) (.toPath (io/file repo-dir)))
         repo (make-native-repository repo-dir-path data-files)
-        buf (a/make-buffer)
-        results (v/make-empty-model)]
+        buf (a/make-buffer)]
     (log/infof "Number of terms: %d" (count terms))
-    (process-terms terms mapping-repo repo buf results) ;; process searching in mapping repository and data repository
+    (process-terms terms mapping-repo repo buf) ;; process searching in mapping repository and data repository
     (a/process-counting buf)
-    (a/process-analysis mapping-repo results buf)
-    ;; copy weights from mapping repo to the output model
-    (doall (map #(v/copy-to-model % mapping-repo results) (v/find-weights-subjects mapping-repo)))
-    (v/print-model results)))
+    (a/process-analysis mapping-repo buf)
+    (v/print-repository mapping-repo)))
   
 
