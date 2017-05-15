@@ -48,6 +48,8 @@
   buffer `a/make-buffer`.
   "
   [terms mapping-repository data-repository buffer result]
+  {:pre [(seq? terms)]}
+  
   (let [sparql (load-sparql-string "match_terms.rq")]
     (dorun (pmap (fn [t]
                    (log/infof "  Process term: %s" t)
@@ -107,10 +109,14 @@ All results are printed to standard output as turtle formated file.
 If was extracted to separate function for testing purposes."
   [^File terms-file ^File mapping-file ^Collection data-files ^File repo-dir]
   (log/debug (format "# do-main arguments: %s %s %s" terms-file data-files repo-dir))
-  (let [terms (line-seq (io/reader terms-file))
+  (let [terms (seq (set (line-seq (io/reader terms-file))))     ;; reads terms from file. Loads terms into a set to remove replications.
         mapping-repo (make-mapping-repository mapping-file)
         repo-dir (or repo-dir (apply str (list (System/getProperty "user.dir") "/rdf4j-repository")))
-        repo (make-native-repository (.toPath repo-dir) data-files)
+        repo-dir-path (cond
+                        (instance? File repo-dir) (.toPath repo-dir)
+                        (instance? Path repo-dir) repo-dir
+                        (instance? String repo-dir) (.toPath (io/file repo-dir)))
+        repo (make-native-repository repo-dir-path data-files)
         buf (a/make-buffer)
         results (v/make-empty-model)]
     (log/infof "Number of terms: %d" (count terms))

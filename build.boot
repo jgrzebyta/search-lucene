@@ -20,7 +20,7 @@
 (def version-namespace (symbol "search.version"))
 
 (task-options!
- version {:minor 'zero :patch 'one :include false :generate version-namespace}
+ version {:minor 'zero :patch 'two :include false :generate version-namespace}
  pom {:project (get-env :project) }
  aot {:all true}
  jar {:main 'search.lucene-search})

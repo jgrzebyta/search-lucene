@@ -15,7 +15,16 @@
 (t/deftest test-do-main
   (t/testing "Test do-main"
     (let [tmp-dir (Files/createTempDirectory "basic_" (make-array FileAttribute 0))
-          terms-file (io/file "tests/resources/terms.cvs")
+          terms-file (io/file "tests/resources/terms.csv")
+          mapping-file (io/file "tests/resources/weights.ttl")
+          data-files (list (-> (io/file "tests/resources/dataset.ttl")
+                               (.toPath)))]
+      (log/debugf "Temp directory location: %s" (.toString tmp-dir))
+      (m/do-main terms-file mapping-file data-files tmp-dir)
+      (FileUtils/deleteDirectory (.toFile tmp-dir))))
+  (t/testing "Test do-main with repeated terms"
+    (let [tmp-dir (Files/createTempDirectory "basic_" (make-array FileAttribute 0))
+          terms-file (io/file "tests/resources/terms2.csv")
           mapping-file (io/file "tests/resources/weights.ttl")
           data-files (list (-> (io/file "tests/resources/dataset.ttl")
                                (.toPath)))]

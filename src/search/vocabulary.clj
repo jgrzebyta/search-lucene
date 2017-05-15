@@ -54,7 +54,7 @@ to-return))
   (Rio/write model (OutputStreamWriter. System/out) RDFFormat/TURTLE))
 
 
-(defn search-mapping ^Value [^SailRepository mapping term]
+(defn search-mapping ^Value [^SailRepository mapping ^String term]
   (s/with-sparql [:sparql find-mapping-rq :result rs :repository mapping :binding {:in_term term}]
     (cond
       (> (count rs) 1) (throw (ex-info "Multiple mappings for single term." {:term term :mappings (doall rs)}))

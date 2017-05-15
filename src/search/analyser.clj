@@ -49,7 +49,7 @@
 
 
 (defn- count-merget
-  "Process f operation on values of kw keywords of each map of list-of-maps."
+  "Process `f` operation on values of `kw` keywords of each map of the input list-of-maps (`lom`)."
   [lom kw f]
   (if (= 1 (count lom))
     (-> lom
@@ -63,7 +63,6 @@
   [buffer]
   (doseq [trm (keys @buffer)
           :let [sub (keys (get @buffer trm))]]
-    ;;(printf "record [%s] [%s]: %s\n" trm sub records)
     (doseq [sb sub]
       (swap! buffer #(update-in % [trm sb] count-merget :score +) ))))
 
