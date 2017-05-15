@@ -10,7 +10,8 @@
             [rdf4j.repository :as r]
             [search.vocabulary :as voc]
             [search.lucene-search :as m]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [test-patterns :as pats]))
 
 (t/deftest test-do-main
   (t/testing "Test do-main"
