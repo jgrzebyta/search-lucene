@@ -20,4 +20,9 @@ data:record3 a :Record ;
 
 data:record4 a :Record ;
     :term50 "term3" ;
+    :term2 "term3" ;
     :other "12.0"^^xsd:float .
+
+data:record7 a :Record ;
+    :predic1 "term10" ;
+    :other "17"^^xsd:int .

@@ -19,7 +19,10 @@
 (defn normalize-score
   "Multiplies the score by weight defined in matrix based on predicate."
   [score mapping-repository predicate]
-  (* score (get (v/search-weight mapping-repository predicate) :weight)))
+  (let [{:keys [predicate weight weight-node]} (v/search-weight mapping-repository predicate)]
+    (when-not weight-node
+      (log/warnf "Property '%s' has no mapping record. The weight is default (1.0)." predicate))
+    (* score weight)))
 
 (defn process-binding [mapping-repository ^QueryBindingSet b buffer]
   (let [term (-> b
@@ -59,7 +62,10 @@
 
 
 (defn process-counting
-  "Process temporary buffer."
+ "Process temporary buffer.
+  
+  Flattens the data structure and extracts term, domain id and score. If there are more than
+  one predicate supporting tern & domain id pair than the scores are added."
   [buffer]
   (doseq [trm (keys @buffer)
           :let [sub (keys (get @buffer trm))]]

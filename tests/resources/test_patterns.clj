@@ -8,8 +8,11 @@
 
 
 (defn with-do-main-files
-  "Run `search.lucene-search/do-main` with different arguments."
+  "Run `search.lucene-search/do-main` with different arguments.
+
+  `File`s are accepted as arguments."
   [^File term-file ^File mapping-file ^File data-file]
-  (let [tmp_dir (Files/createTempDirectory "test_dir_" (make-array FileAttribute 0))]
-    (m/do-main terms mapping data tmp_dir)
+  (let [tmp-dir (Files/createTempDirectory "test_dir_" (make-array FileAttribute 0))]
+    (m/do-main term-file mapping-file data-file tmp-dir)
     (FileUtils/deleteDirectory (.toFile tmp-dir))))
+

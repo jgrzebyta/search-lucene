@@ -79,13 +79,13 @@ to-return))
     (s/with-sparql [:sparql find-weights-rq :result rs :repository mapping :binding {:in_prop prop-str}]
       (cond
         (> (count rs) 1) (throw (ex-info "Multiple weights for single property." {:property prop-str :mappings (doall rs)}))
-        (= (count rs) 0) 1.0
+        (= (count rs) 0) {:weight 1.0 :predicate property}
         :default {:predicate (-> (first rs)
                                   (.getValue "prop"))
                   :weight (-> (first rs)
                               (.getValue "weight")
                               (.floatValue))
-                  :wage-node (-> (first rs)
+                  :weight-node (-> (first rs)
                                  (.getValue "weight_node"))}))))
 
 
