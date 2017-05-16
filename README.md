@@ -19,18 +19,18 @@ Mapping file consists two blocks:
 	skos:closeMatch <http://example.org/data#record1> .
  ```
  
- - declare wages for properties
-
-The text searching feature is delivered by **Apache Lucene** framework.
-
+ - declare weights for properties
 
 
 Example:
 
 ```
-<http://example.org/data#record1> rdf:type rdf:Property ;
-    map:wage "1.0"^^xsd:float .
-	
-<http://example.org/data#record2> rdf:type rdf:Property ;
-	map:wage "0.7"^^xsd:float .
+ @prefix map: <http://rdf.adalab-project/ontology/mapping/> .
+
+ :current_weights a map:WeightSet ;
+   map:weights [ rdf:predicate :term ; map:weight "1.5"^^xsd:float ] ,
+               [ rdf:predicate :term2 ; map:weight "0.5"^^xsd:float ] ,
+               [ rdf:predicate :term50 ; map:weight "3"^^xsd:float ] .
 ```
+
+The text searching feature is delivered by **Apache Lucene** framework.
