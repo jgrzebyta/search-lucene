@@ -33,4 +33,19 @@ Example:
                [ rdf:predicate :term50 ; map:weight "3"^^xsd:float ] .
 ```
 
-The text searching feature is delivered by **Apache Lucene** framework.
+The text searching feature is delivered by **Apache Lucene** framework. Location of the repository with 
+the lucene index is given by option `--repository-dir`.
+
+### Options
+
+  * -h, --help                  Print help screen
+  * -t, --terms-file FILE        File containing terms to search. Single term in line.
+  * -m, --mapping-file FILE      File containing mapping data including wages.
+  * -r, --repository-dir DIR     Location where the native repository should be put.
+
+
+### Usage
+
+```
+java -jar search-lucene-standalone.jar -t terms.csv -m mapping_file.ttl -r /tmp/repository
+```
