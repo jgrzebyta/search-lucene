@@ -46,7 +46,7 @@
   Do text searching in the `data-repository` and load result into atomised `Map`-based
   buffer `a/make-buffer`.
   "
-  [terms mapping-repository data-repository buffer]
+  [terms mapping-repository data-repository]
   {:pre [(seq? terms)]}
   
   (let [sparql (load-sparql-string "match_terms.rq")]
@@ -55,7 +55,10 @@
                    ;; in the first instance try to find term in mapping repository
                    (when-not (v/search-mapping mapping-repository t)
                      (sp/with-sparql [:sparql sparql :result rs :binding {:tf_term t} :repository data-repository]
-                       (a/load-dataset mapping-repository rs buffer)))) terms))))
+                       (if (= 0 (count rs))
+                         (log/debugf "No data for term '%s'" t)
+                         (a/load-dataset mapping-repository rs)
+                         )))) terms))))
 
 (defn load-sparql-string ^String [^String file-location]
   (-> (io/resource file-location)
@@ -114,12 +117,9 @@ If was extracted to separate function for testing purposes."
                         (instance? File repo-dir) (.toPath repo-dir)
                         (instance? Path repo-dir) repo-dir
                         (instance? String repo-dir) (.toPath (io/file repo-dir)))
-        repo (make-native-repository repo-dir-path data-files)
-        buf (a/make-buffer)]
+        repo (make-native-repository repo-dir-path data-files)]
     (log/infof "Number of terms: %d" (count terms))
-    (process-terms terms mapping-repo repo buf) ;; process searching in mapping repository and data repository
-    (a/process-counting buf)
-    (a/process-analysis mapping-repo buf)
+    (process-terms terms mapping-repo repo) ;; process searching in mapping repository and data repository
     (v/print-repository mapping-repo)))
   
 

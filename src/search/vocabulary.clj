@@ -31,23 +31,37 @@
 
 (def ^IRI WEIGHT-SET (.createIRI vf NS-INST "WeightSet"))
 
-(defn create-record
-  "Creates all mapping statements for a single record: `subj` and `term`.
 
-Where `subj` is string representation of domain object URI and `term` is a string representation of term. 
-"
-  [subj term]
-  (let [term-sha1 (-> term
+
+(defprotocol AsMappingRDF
+  "Returns RDF representation of mapping entity"
+  (asMappingRDF ^Model [this]))
+
+
+(defrecord SearchRecord [^String term ^String subject ^String property ^Float score]
+
+  AsMappingRDF
+  (asMappingRDF [this]
+    (let [term-sha1 (-> term
                         (bch/sha1)
                         (bytes->hex))
           map-instance (.createIRI vf NS-INST term-sha1)
           to-return (-> (LinkedHashModelFactory.)
                         (.createEmptyModel))]
-    (.add to-return map-instance RDF/TYPE MappedTerm (r/context-array))
-    (.add to-return map-instance SHA1 (.createLiteral vf term-sha1) (r/context-array))
-    (.add to-return map-instance SKOS/NOTATION (.createLiteral vf term XMLSchema/STRING) (r/context-array))
-    (.add to-return map-instance SKOS/CLOSE_MATCH (.createIRI vf subj) (r/context-array))
-to-return))
+      (.add to-return map-instance RDF/TYPE MappedTerm (r/context-array))
+      (.add to-return map-instance SHA1 (.createLiteral vf term-sha1) (r/context-array))
+      (.add to-return map-instance SKOS/NOTATION (.createLiteral vf term XMLSchema/STRING) (r/context-array))
+      (.add to-return map-instance SKOS/CLOSE_MATCH (.createIRI vf subject) (r/context-array))
+      to-return))
+  Object
+  (toString [this]
+    (pr-str this)))
+
+
+(def search-record-comparator
+  "Define comparator for `SearchRecord` by `score` field."
+  (comparator (fn [x y]
+                (> (get x :score) (get y :score)))))
 
 
 (defn print-repository
@@ -89,7 +103,7 @@ to-return))
                                  (.getValue "weight_node"))}))))
 
 
-(defn add-to-model
+(defn add-to-repository
   "Add `statements` from `Iterable`<`Statement`> type into `SailRepository`.
    Method does loading within transaction.
 "
@@ -105,8 +119,6 @@ to-return))
           (.rollback cnx)
           (throw (ex-info "Some error" {:cause e}))))
       (finally (.commit cnx)))))
-
-
 
 (defn find-weights-subjects
   "Returns a collection of subjects following rule:

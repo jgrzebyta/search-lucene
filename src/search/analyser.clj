@@ -1,30 +1,32 @@
 (ns search.analyser
-  (:import [org.eclipse.rdf4j.model.vocabulary RDFS]
-           [org.eclipse.rdf4j.query.algebra.evaluation QueryBindingSet])
-  (:require [clojure.pprint :as pp]
+  (:require [buddy.core.codecs :refer [bytes->hex]]
+            [buddy.core.hash :as bch]
+            [clojure.pprint :as pp]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [rdf4j.loader :as l :exclude [-main]]
             [rdf4j.repository :as r]
             [rdf4j.utils :as u]
-            [search.vocabulary :as v]))
+            [search.vocabulary :as v])
+  (:import [search.vocabulary SearchRecord]
+           [org.eclipse.rdf4j.model Model IRI Resource Value]
+           [org.eclipse.rdf4j.model.impl LinkedHashModelFactory]
+           [org.eclipse.rdf4j.model.vocabulary RDFS SKOS RDF]
+           [org.eclipse.rdf4j.query.algebra.evaluation QueryBindingSet]))
 
-(defn make-buffer
- "Creates atomised map."
-  []
-  (atom {}))
-
-(def value-factory (u/value-factory))
 
 (defn normalize-score
   "Multiplies the score by weight defined in matrix based on predicate."
   [score mapping-repository predicate]
   (let [{:keys [predicate weight weight-node]} (v/search-weight mapping-repository predicate)]
     (when-not weight-node
-      (log/warnf "Property '%s' has no mapping record. The weight is default (1.0)." predicate))
+      (log/infof "Property '%s' has no mapping record." predicate))
     (* score weight)))
 
-(defn process-binding [mapping-repository ^QueryBindingSet b buffer]
+
+(defn process-binding
+  "Converts SPARQL result into a map."
+  [mapping-repository ^QueryBindingSet b]
   (let [term (-> b
                  (.getValue "tfString")
                  (.stringValue))
@@ -38,51 +40,30 @@
                   (.getValue "score")
                   (.floatValue)
                   (normalize-score mapping-repository property))
-        sub-sc (assoc {} :score score :term term :property property)]
+        sub-sc (SearchRecord. term subject property score)]
     (log/debugf "Term: %s -- %s\n" term sub-sc)
-    (swap! buffer #(update-in % [term subject] (fnil conj (hash-set)) sub-sc))))
+    sub-sc))
+
+(defn merge-by-domains [data]
+  {:pre [coll? data]}
+  (let [domains (seq (set (map #(:subject %) data)))]
+    (for [d domains]
+      (let [filtered (filter (comp #{d} :subject) data)
+            added-score (reduce + (map #(:score %) filtered))]
+        (log/tracef "filtered by domain [%s] : %s" d (seq (doall filtered)))
+        (v/map->SearchRecord (merge (reduce #(merge %1 %2) filtered) {:score added-score}))
+        ))))
 
 (defn load-dataset
-  "Populates buffer map "
-  [mappings-repository dataset buffer]
-  (loop [rc dataset]
-    (when-let [r (first rc)]
-      (process-binding mappings-repository r buffer)
-      (recur (rest rc)))))
+  "Process SPARQL results.
 
-
-(defn- count-merget
-  "Process `f` operation on values of `kw` keywords of each map of the input list-of-maps (`lom`)."
-  [lom kw f]
-  (if (= 1 (count lom))
-    (-> lom
-        (first)
-        (get kw))
-    (reduce f (map #(get % kw) lom))))
-
-
-(defn process-counting
- "Process temporary buffer.
-  
-  Flattens the data structure and extracts term, domain id and score. If there are more than
-  one predicate supporting tern & domain id pair than the scores are added."
-  [buffer]
-  (doseq [trm (keys @buffer)
-          :let [sub (keys (get @buffer trm))]]
-    (doseq [sb sub]
-      (swap! buffer #(update-in % [trm sb] count-merget :score +) ))))
-
-
-(defn process-analysis
-  "The main counting process."
-  [mapping-repo buffer]
-  ;;(log/debug "Buffer: \n" (with-out-str (pp/pprint @buffer)))
-  (doseq [trm (keys @buffer)
-          :let [term trm
-                subjs (keys (get @buffer trm))]]
-    (if (= 1 (count subjs))
-      (let [domain-uri (first subjs)]
-        (v/add-to-model mapping-repo (v/create-record domain-uri term)))
-      (v/add-to-model mapping-repo (v/create-record (-> (apply max-key val (get @buffer trm))
-                                                  (key))
-                                              term)))))
+  This function process SPARQL query results loading them into `search.vocabulary.SearchRecord` record. 
+  If there is many records in the internal map returns with the highest score. 
+  "
+  [mappings-repository dataset]
+  (let [data-structure-seq (map #(process-binding mappings-repository %) dataset)
+        added-domains (merge-by-domains data-structure-seq)
+        top-one (first (sort v/search-record-comparator added-domains))]
+    (when (some? top-one)
+      (log/debugf "Load '%s' into mapping repository." (.toString top-one))
+      (v/add-to-repository mappings-repository (.asMappingRDF top-one)))))

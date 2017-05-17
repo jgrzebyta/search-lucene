@@ -8,8 +8,9 @@
 	  <target>System.err</target>
 	</appender>
 
-	<logger name="search" level="debug"/>
-	<logger name="basic" level="debug"/>
+	<logger name="search.analyser" level="trace"/>
+	<logger name="tests.core" level="debug"/>
+	<logger name="tests.basic" level="debug"/>
 	
 	<root>
 		<level value="info" />

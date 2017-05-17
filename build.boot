@@ -20,7 +20,7 @@
 (def version-namespace (symbol "search.version"))
 
 (task-options!
- version {:minor 'zero :patch 'two :include false :generate version-namespace}
+ version {:minor 'zero :patch 'three :include false :generate version-namespace}
  pom {:project (get-env :project) }
  aot {:all true}
  jar {:main 'search.lucene-search})
@@ -40,7 +40,8 @@
   *opts*
   (testing)
   (println (format "Repositories: %s" (get-env :repositories)))
-  (use '[basic])
+  (use '[tests.basic]
+       '[tests.core])
   (if (nil? (:test-name *opts*))
     (do
       (println "Run all tests")
