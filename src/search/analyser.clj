@@ -20,7 +20,7 @@
   [score mapping-repository predicate]
   (let [{:keys [predicate weight weight-node]} (v/search-weight mapping-repository predicate)]
     (when-not weight-node
-      (log/infof "Property '%s' has no mapping record." predicate))
+      (log/debugf "Property '%s' has no mapping record." predicate))
     (* score weight)))
 
 

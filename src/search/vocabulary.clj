@@ -67,11 +67,19 @@
 (defn print-repository
   "Prints a model to Turtle format."
   [^SailRepository repository]
-  (let [writer-config (doto
+  (let [model (-> (LinkedHashModelFactory.)
+                  (.createEmptyModel))                                                      ;; It must go through the Model because set of Rio#write(Iterable<Statement>, ...) methods
+        writer-config (doto                                                                 ;; checks if the iterable is Method.
                           (WriterConfig.)
                         (.set BasicWriterSettings/PRETTY_PRINT true)
                         (.set BasicWriterSettings/RDF_LANGSTRING_TO_LANG_LITERAL false))]
-  (Rio/write (r/get-all-statements repository) (OutputStreamWriter. System/out) RDFFormat/TURTLE writer-config)))
+    ;; add namespaces to model
+    (.setNamespace model SKOS/NS)
+    (.setNamespace model RDF/NS)
+    (.setNamespace model XMLSchema/NS)
+    (.setNamespace model "map" NS-INST)
+    (.addAll model (r/get-all-statements repository))
+  (Rio/write model (OutputStreamWriter. System/out) RDFFormat/TURTLE writer-config)))
 
 
 (defn search-mapping ^Value [^SailRepository mapping ^String term]

@@ -63,12 +63,12 @@
   
   (let [sparql (load-sparql-string "match_terms.rq")]
     (dorun (pmap (fn [t]
-                   (log/infof "  Process term: %s" t)
+                   (log/infof "  Process term: '%s'" t)
                    ;; in the first instance try to find term in mapping repository
                    (when-not (v/search-mapping mapping-repository t)
                      (sp/with-sparql [:sparql sparql :result rs :binding {:tf_term t} :repository data-repository]
                        (if (= 0 (count rs))
-                         (log/debugf "No data for term '%s'" t)
+                         (log/infof "  No data for term '%s'" t)
                          (a/load-dataset mapping-repository rs)
                          )))) terms))))
 
