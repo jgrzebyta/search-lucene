@@ -18,17 +18,29 @@
 (declare do-main load-sparql-string)
 
 (defn make-native-repository
-  "Populates native repository with gene-annotation data. In the next step it will be done text searching on that."
-    [^Path dir ^Collection dataset]
+ "Populates native repository with gene-annotation data. In the next step it will be done text searching on that.
+
+  `NativeRepository` detects internally if `dir` directory exists and contains valid files.
+
+  This method detects also if repository is empty -- than loads data files from `dataset` otherwise just returns
+  initialised repository.   
+"
+  [^Path dir ^Collection dataset]
   (let [dir (if-not (-> (.toFile dir)
-                          (.exists))
+                        (.exists))
               (u/create-dir dir)
               dir)
-        repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs"))]
-    (l/load-multidata repo dataset)
-    (let [cnt (count (r/get-all-statements repo))]
-      (log/debugf "Loaded [%d] statements\n" cnt)
-      (assert (> cnt 0)))
+        ^SailRepository repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs"))]
+    ;; detects if data are loaded;
+    (if-not (empty? (r/get-all-statements repo))
+      (try
+        (l/load-multidata repo dataset)
+        (let [cnt (count (r/get-all-statements repo))]
+          (log/debugf "Loaded [%d] statements\n" cnt)
+          (assert (> cnt 0)))
+        (catch Expection x (throws (ex-info "Data cannot be loaded into repository. " {:reason x :repository-dir (.getDataDir repo)}))))
+      (when-not (.isActive repo)
+        (.initialize repo)))
     repo))
 
 (defn make-mapping-repository ^SailRepository [^File file]
