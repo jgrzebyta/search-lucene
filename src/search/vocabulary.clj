@@ -172,3 +172,12 @@ bind (iri(?in_prop) as ?prop) .
               ] .
 } 
 ")
+
+
+(def match-term-rq
+"prefix luc: <http://www.openrdf.org/contrib/lucenesail#>
+
+  select ?tfString ?sub ?score ?property  where {
+  bind (str(?tf_term) as ?tfString) .
+  (?tfString luc:allMatches luc:property luc:allProperties luc:score) luc:search (?sub ?property ?score) .
+}")

@@ -32,14 +32,14 @@
               dir)
         ^SailRepository repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs"))]
     ;; detects if data are loaded;
-    (if-not (empty? (r/get-all-statements repo))
+    (if (empty? (r/get-all-statements repo))
       (try
         (l/load-multidata repo dataset)
         (let [cnt (count (r/get-all-statements repo))]
           (log/debugf "Loaded [%d] statements\n" cnt)
           (assert (> cnt 0)))
-        (catch Expection x (throws (ex-info "Data cannot be loaded into repository. " {:reason x :repository-dir (.getDataDir repo)}))))
-      (when-not (.isActive repo)
+        (catch Exception x (throw (ex-info "Data cannot be loaded into repository. " {:reason x :repository-dir (.getDataDir repo)}))))
+      (when-not (.isInitialized repo)
         (.initialize repo)))
     repo))
 
@@ -61,21 +61,15 @@
   [terms mapping-repository data-repository]
   {:pre [(seq? terms)]}
   
-  (let [sparql (load-sparql-string "match_terms.rq")]
-    (dorun (pmap (fn [t]
-                   (log/infof "  Process term: '%s'" t)
-                   ;; in the first instance try to find term in mapping repository
-                   (when-not (v/search-mapping mapping-repository t)
-                     (sp/with-sparql [:sparql sparql :result rs :binding {:tf_term t} :repository data-repository]
-                       (if (= 0 (count rs))
-                         (log/infof "  No data for term '%s'" t)
-                         (a/load-dataset mapping-repository rs)
-                         )))) terms))))
-
-(defn load-sparql-string ^String [^String file-location]
-  (-> (io/resource file-location)
-      (slurp)))
-
+  (dorun (pmap (fn [t]
+                 (log/infof "  Process term: '%s'" t)
+                 ;; in the first instance try to find term in mapping repository
+                 (when-not (v/search-mapping mapping-repository t)
+                   (sp/with-sparql [:sparql v/match-term-rq :result rs :binding {:tf_term t} :repository data-repository]
+                     (if (= 0 (count rs))
+                       (log/infof "  No data for term '%s'" t)
+                       (a/load-dataset mapping-repository rs)
+                       )))) terms)))
 
 (def cli-options
   [["-h" "--help" "Print this screen" ]
