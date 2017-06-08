@@ -7,7 +7,7 @@
             [rdf4j.utils :as u])
   (:import [java.lang Iterable]
            [java.io OutputStreamWriter]
-           [org.eclipse.rdf4j.model Model IRI Value BNode Statement]
+           [org.eclipse.rdf4j.model Model IRI Value BNode Statement Namespace]
            [org.eclipse.rdf4j.model.impl LinkedHashModelFactory LinkedHashModel]
            [org.eclipse.rdf4j.model.util Models]
            [org.eclipse.rdf4j.model.vocabulary RDF RDFS SKOS XMLSchema]
@@ -68,12 +68,15 @@
   "Prints a model to Turtle format."
   [^SailRepository repository]
   (let [model (-> (LinkedHashModelFactory.)
-                  (.createEmptyModel))                                                      ;; It must go through the Model because set of Rio#write(Iterable<Statement>, ...) methods
-        writer-config (doto                                                                 ;; checks if the iterable is Method.
+                  (.createEmptyModel))                                      ;; It must go through the Model because set of                                                                         ;; Rio#write(Iterable<Statement>, ...) methods
+        writer-config (doto                                                 ;; checks if the iterable is Method.
                           (WriterConfig.)
                         (.set BasicWriterSettings/PRETTY_PRINT true)
                         (.set BasicWriterSettings/RDF_LANGSTRING_TO_LANG_LITERAL false))]
-    ;; add namespaces to model
+    ;; copy all namespaces from repository
+    (doseq [^Namespace ns (r/get-all-namespaces repository)]
+      (.setNamespace model ns))
+    ;; add default namespaces to model
     (.setNamespace model SKOS/NS)
     (.setNamespace model RDF/NS)
     (.setNamespace model XMLSchema/NS)
@@ -172,3 +175,12 @@ bind (iri(?in_prop) as ?prop) .
               ] .
 } 
 ")
+
+
+(def match-term-rq
+"prefix luc: <http://www.openrdf.org/contrib/lucenesail#>
+
+  select ?tfString ?sub ?score ?property  where {
+  bind (str(?tf_term) as ?tfString) .
+  (?tfString luc:allMatches luc:property luc:allProperties luc:score) luc:search (?sub ?property ?score) .
+}")

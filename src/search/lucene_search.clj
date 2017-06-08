@@ -20,17 +20,29 @@
 (declare do-main load-sparql-string)
 
 (defn make-native-repository
-  "Populates native repository with gene-annotation data. In the next step it will be done text searching on that."
-    [^Path dir ^Collection dataset]
+ "Populates native repository with gene-annotation data. In the next step it will be done text searching on that.
+
+  `NativeRepository` detects internally if `dir` directory exists and contains valid files.
+
+  This method detects also if repository is empty -- than loads data files from `dataset` otherwise just returns
+  initialised repository.   
+"
+  [^Path dir ^Collection dataset]
   (let [dir (if-not (-> (.toFile dir)
-                          (.exists))
+                        (.exists))
               (u/create-dir dir)
               dir)
-        repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs"))]
-    (l/load-multidata repo dataset)
-    (let [cnt (count (r/get-all-statements repo))]
-      (log/debugf "Loaded [%d] statements\n" cnt)
-      (assert (> cnt 0)))
+        ^SailRepository repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs"))]
+    ;; detects if data are loaded;
+    (if (empty? (r/get-all-statements repo))
+      (try
+        (l/load-multidata repo dataset)
+        (let [cnt (count (r/get-all-statements repo))]
+          (log/debugf "Loaded [%d] statements\n" cnt)
+          (assert (> cnt 0)))
+        (catch Exception x (throw (ex-info "Data cannot be loaded into repository. " {:reason x :repository-dir (.getDataDir repo)}))))
+      (when-not (.isInitialized repo)
+        (.initialize repo)))
     repo))
 
 (defn make-mapping-repository ^SailRepository [^File file]
@@ -50,22 +62,15 @@
   "
   [terms mapping-repository data-repository]
   {:pre [(seq? terms)]}
-  
-  (let [sparql (load-sparql-string "match_terms.rq")]
-    (dorun (pmap (fn [t]
-                   (.info sl/main-logger (format "  Process term: '%s'" t))
-                   ;; in the first instance try to find term in mapping repository
-                   (when-not (v/search-mapping mapping-repository t)
-                     (sp/with-sparql [:sparql sparql :result rs :binding {:tf_term t} :repository data-repository]
-                       (if (= 0 (count rs))
-                         (log/infof "  No data for term '%s'" t)
-                         (a/load-dataset mapping-repository rs t)
-                         )))) terms))))
-
-(defn load-sparql-string ^String [^String file-location]
-  (-> (io/resource file-location)
-      (slurp)))
-
+  (dorun (pmap (fn [t]
+                 (.info sl/main-logger (format "  Process term: '%s'" t))
+                 ;; in the first instance try to find term in mapping repository
+                 (when-not (v/search-mapping mapping-repository t)
+                   (sp/with-sparql [:sparql v/match-term-rq :result rs :binding {:tf_term t} :repository data-repository]
+                     (if (= 0 (count rs))
+                       (log/infof "  No data for term '%s'" t)
+                       (a/load-dataset mapping-repository rs)
+                       )))) terms)))
 
 (def cli-options
   [["-h" "--help" "Print this screen" ]
