@@ -3,6 +3,7 @@
           :resource-paths #{"resources"}
           :url "http://www.adalab-project.org/"
           :dependencies '[[adalab/triple-loader "0.2.1-SNAPSHOT"]
+                          [org.slf4j/slf4j-api "1.7.25"]
                           [org.clojure/tools.logging "0.3.1"]
                           [org.clojure/tools.cli "0.3.5"]
                           [org.eclipse.rdf4j/rdf4j-runtime "2.3-SNAPSHOT"]

@@ -7,7 +7,8 @@
             [rdf4j.loader :as l :exclude [-main]]
             [rdf4j.repository :as r]
             [rdf4j.utils :as u]
-            [search.vocabulary :as v])
+            [search.vocabulary :as v]
+            [search.logger :refer [main-logger]])
   (:import [search.vocabulary SearchRecord]
            [org.eclipse.rdf4j.model Model IRI Resource Value]
            [org.eclipse.rdf4j.model.impl LinkedHashModelFactory]
@@ -60,10 +61,11 @@
   This function process SPARQL query results loading them into `search.vocabulary.SearchRecord` record. 
   If there is many records in the internal map returns with the highest score. 
   "
-  [mappings-repository dataset]
+  [mappings-repository dataset & [term]]
   (let [data-structure-seq (map #(process-binding mappings-repository %) dataset)
         added-domains (merge-by-domains data-structure-seq)
         top-one (first (sort v/search-record-comparator added-domains))]
     (when (some? top-one)
-      (log/debugf "Load '%s' into mapping repository." (.toString top-one))
+      (.debug main-logger (format "[term: '%s'] Data: \n\t %s" term (with-out-str (pp/pprint (list data-structure-seq)))))
+      (.debug main-logger (format "[term: '%s'] Load '%s' into mapping repository." term (.toString top-one)))
       (v/add-to-repository mappings-repository (.asMappingRDF top-one)))))

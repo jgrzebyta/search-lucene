@@ -4,7 +4,8 @@
            [java.nio.file Paths Path]
            [java.util Collection]
            [org.eclipse.rdf4j.repository.sail SailRepository]
-           [org.eclipse.rdf4j.sail.nativerdf NativeStore])
+           [org.eclipse.rdf4j.sail.nativerdf NativeStore]
+           [ch.qos.logback.classic Level])
   (:require [clojure.java.io :as io]
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.tools.logging :as log]
@@ -13,7 +14,8 @@
             [rdf4j.sparql.processor :as sp]
             [rdf4j.utils :as u]
             [search.analyser :as a]
-            [search.vocabulary :as v]))
+            [search.vocabulary :as v]
+            [search.logger :as sl]))
 
 (declare do-main load-sparql-string)
 
@@ -51,13 +53,13 @@
   
   (let [sparql (load-sparql-string "match_terms.rq")]
     (dorun (pmap (fn [t]
-                   (log/infof "  Process term: '%s'" t)
+                   (.info sl/main-logger (format "  Process term: '%s'" t))
                    ;; in the first instance try to find term in mapping repository
                    (when-not (v/search-mapping mapping-repository t)
                      (sp/with-sparql [:sparql sparql :result rs :binding {:tf_term t} :repository data-repository]
                        (if (= 0 (count rs))
                          (log/infof "  No data for term '%s'" t)
-                         (a/load-dataset mapping-repository rs)
+                         (a/load-dataset mapping-repository rs t)
                          )))) terms))))
 
 (defn load-sparql-string ^String [^String file-location]
@@ -69,7 +71,8 @@
   [["-h" "--help" "Print this screen" ]
    ["-t" "--terms-file FILE" "File containing terms to search. Single term in line." :default nil :parse-fn #(io/file %)]
    ["-m" "--mapping-file FILE" "File containing mapping data including wages." :default nil :parse-fn #(io/file %)]
-   ["-r" "--repository-dir DIR" "Location where the native repository should be put." :default "." :parse-fn #(io/file %)]])
+   ["-r" "--repository-dir DIR" "Location where the native repository should be put." :default "." :parse-fn #(io/file %)]
+   ["-d" "--debug" "Switch on debug logging level"]])
 
 
 (defn validate-args
@@ -80,6 +83,8 @@
   options: %s
   arguments: %s
   errors: %s\n" options arguments errors))
+    (when (some? (get options :debug))
+                 (.setLevel sl/main-logger Level/DEBUG))
     (cond
       (:help options) (println summary)
       errors (println summary)
