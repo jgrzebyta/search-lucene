@@ -2,9 +2,10 @@
   (:gen-class)
   (:import [java.io File]
            [java.nio.file Paths Path]
-           [java.util Collection]
+           [java.util Collection Properties]
            [org.eclipse.rdf4j.repository.sail SailRepository]
            [org.eclipse.rdf4j.sail.nativerdf NativeStore]
+           [org.eclipse.rdf4j.sail.lucene LuceneSail]
            [ch.qos.logback.classic Level])
   (:require [clojure.java.io :as io]
             [clojure.tools.cli :refer [parse-opts]]
@@ -32,7 +33,10 @@
                         (.exists))
               (u/create-dir dir)
               dir)
-        ^SailRepository repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs"))]
+        ^Properties parameters (doto
+                                  (Properties.)
+                                (.setProperty LuceneSail/ANALYZER_CLASS_KEY "org.apache.lucene.analysis.core.WhitespaceAnalyzer"))
+        ^SailRepository repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs") parameters)]
     ;; detects if data are loaded;
     (if (empty? (r/get-all-statements repo))
       (try
