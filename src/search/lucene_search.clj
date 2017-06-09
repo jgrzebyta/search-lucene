@@ -20,6 +20,11 @@
 
 (declare do-main load-sparql-string)
 
+                                        ; used analysers:
+                                        ; - "org.apache.lucene.analysis.standard.StandardAnalyzer" -- default
+                                        ; - "org.apache.lucene.analysis.core.WhitespaceAnalyzer" -- does not work 
+                                        ; - "org.apache.lucene.analysis.core.KeywordAnalyzer" -- does not work
+
 (defn make-native-repository
  "Populates native repository with gene-annotation data. In the next step it will be done text searching on that.
 
@@ -35,7 +40,7 @@
               dir)
         ^Properties parameters (doto
                                   (Properties.)
-                                (.setProperty LuceneSail/ANALYZER_CLASS_KEY "org.apache.lucene.analysis.core.WhitespaceAnalyzer"))
+                                (.setProperty LuceneSail/ANALYZER_CLASS_KEY "org.apache.lucene.analysis.standard.StandardAnalyzer"))
         ^SailRepository repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs") parameters)]
     ;; detects if data are loaded;
     (if (empty? (r/get-all-statements repo))
@@ -73,7 +78,7 @@
                    (sp/with-sparql [:sparql v/match-term-rq :result rs :binding {:tf_term t} :repository data-repository]
                      (if (= 0 (count rs))
                        (log/infof "  No data for term '%s'" t)
-                       (a/load-dataset mapping-repository rs)
+                       (a/load-dataset mapping-repository rs t)
                        )))) terms)))
 
 (def cli-options

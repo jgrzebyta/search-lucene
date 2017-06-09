@@ -2,6 +2,7 @@
   (:require [buddy.core.codecs :refer [bytes->hex]]
             [buddy.core.hash :as bch]
             [clojure.tools.logging :as log]
+            [clojure.string :as cs]
             [rdf4j.repository :as r]
             [rdf4j.sparql.processor :as s]
             [rdf4j.utils :as u])
@@ -38,7 +39,7 @@
   (asMappingRDF ^Model [this]))
 
 
-(defrecord SearchRecord [^String term ^String subject ^String property ^Float score]
+(defrecord SearchRecord [^String term ^String subject ^String property ^String value ^Float score]
 
   AsMappingRDF
   (asMappingRDF [this]
@@ -62,6 +63,15 @@
   "Define comparator for `SearchRecord` by `score` field."
   (comparator (fn [x y]
                 (> (get x :score) (get y :score)))))
+
+
+(defn record-valuep?
+  "Predicate checks if record contains given `value`. 
+
+  Useful for filtering."
+  [^String value ^SearchRecord r]
+  (= (cs/lower-case value)
+     (cs/lower-case (get r :value))))
 
 
 (defn print-repository
@@ -180,7 +190,8 @@ bind (iri(?in_prop) as ?prop) .
 (def match-term-rq
 "prefix luc: <http://www.openrdf.org/contrib/lucenesail#>
 
-  select ?tfString ?sub ?score ?property  where {
+  select ?tfString ?sub ?score ?property ?value where {
   bind (str(?tf_term) as ?tfString) .
   (?tfString luc:allMatches luc:property luc:allProperties luc:score) luc:search (?sub ?property ?score) .
+  ?sub ?property ?value
 }")
