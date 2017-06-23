@@ -22,7 +22,7 @@
 
 ;; Mapping vocabulary
 
-(def NS-INST "http://rdf.adalab-project/ontology/mapping/")
+(def NS-INST "http://rdf.adalab-project.org/ontology/mapping/")
 
 (def ^IRI MappedTerm (.createIRI vf NS-INST "MappedTerm"))
 
@@ -160,7 +160,7 @@
 
 (def ^:private find-mapping-rq
 "prefix skos: <http://www.w3.org/2004/02/skos/core#>
- prefix map: <http://rdf.adalab-project/ontology/mapping/>
+ prefix map: <http://rdf.adalab-project.org/ontology/mapping/>
  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
 
 select ?subj ?term ?node where {
@@ -173,7 +173,7 @@ skos:closeMatch ?subj .
 
 
 (def ^:private find-weights-rq
-"prefix map: <http://rdf.adalab-project/ontology/mapping/>
+"prefix map: <http://rdf.adalab-project.org/ontology/mapping/>
  prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 select ?weight_node ?prop ?weight {
