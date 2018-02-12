@@ -14,11 +14,17 @@
   (:import ch.qos.logback.classic.Level
            java.io.File
            java.nio.file.Path
-           java.util.Collection
+           [java.util Collection Properties]
            org.eclipse.rdf4j.repository.sail.SailRepository
+           org.eclipse.rdf4j.sail.lucene.LuceneSail
            org.eclipse.rdf4j.sail.nativerdf.NativeStore))
 
 (declare do-main load-sparql-string)
+
+                                        ; used analysers:
+                                        ; - "org.apache.lucene.analysis.standard.StandardAnalyzer" -- default
+                                        ; - "org.apache.lucene.analysis.core.WhitespaceAnalyzer" -- does not work 
+                                        ; - "org.apache.lucene.analysis.core.KeywordAnalyzer" -- does not work
 
 (defn make-native-repository
  "Populates native repository with gene-annotation data. In the next step it will be done text searching on that.
@@ -33,7 +39,10 @@
                         (.exists))
               (u/create-dir dir)
               dir)
-        ^SailRepository repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs"))]
+        ^Properties parameters (doto
+                                  (Properties.)
+                                (.setProperty LuceneSail/ANALYZER_CLASS_KEY "org.apache.lucene.analysis.standard.StandardAnalyzer"))
+        ^SailRepository repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs") parameters)]
     ;; detects if data are loaded;
     (if (empty? (u/get-all-statements repo))
       (try
@@ -70,7 +79,7 @@
                    (sp/with-sparql [:sparql v/match-term-rq :result rs :binding {:tf_term t} :repository data-repository]
                      (if (= 0 (count rs))
                        (log/infof "  No data for term '%s'" t)
-                       (a/load-dataset mapping-repository rs)
+                       (a/load-dataset mapping-repository rs t)
                        )))) terms)))
 
 (def cli-options
@@ -132,5 +141,3 @@ If was extracted to separate function for testing purposes."
     (log/infof "Number of terms: %d" (count terms))
     (process-terms terms mapping-repo repo) ;; process searching in mapping repository and data repository
     (v/print-repository mapping-repo)))
-  
-

@@ -6,6 +6,4 @@
 
 (def app-main-logger-name "adalab.search-lucene.main")
 
-(def ^Logger main-logger (doto
-                             (LoggerFactory/getLogger app-main-logger-name)
-                           (.setLevel Level/INFO)))
+(def ^Logger main-logger (LoggerFactory/getLogger app-main-logger-name))

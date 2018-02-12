@@ -7,7 +7,8 @@
 	  </encoder>
 	  <target>System.err</target>
 	</appender>
-	
+
+	<logger name="adalab.search-lucene.main" level="info"/> <!-- Default main application logger -->
 	<!-- <logger name="search.lucene-search" level="debug" /> -->
 	<!-- <logger name="rdf4j.dump" level="debug"/> -->
 	<!-- <logger name="triple.repository" level="debug"/> -->
@@ -15,7 +16,7 @@
 	<!-- <Logger name="sparql-test" level="debug"/> -->
 
 	<root>
-		<level value="info" />
+		<level value="warn" />
 		<appender-ref ref="STDERR" />
 	</root>
 </configuration>

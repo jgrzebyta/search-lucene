@@ -2,6 +2,7 @@
   (:require [buddy.core.codecs :refer [bytes->hex]]
             [buddy.core.hash :as bch]
             [clojure.tools.logging :as log]
+            [clojure.string :as cs]
             [rdf4j.repository :as r]
             [rdf4j.core :as c]
             [rdf4j.sparql.processor :as s]
@@ -22,7 +23,7 @@
 
 ;; Mapping vocabulary
 
-(def NS-INST "http://rdf.adalab-project/ontology/mapping/")
+(def NS-INST "http://rdf.adalab-project.org/ontology/mapping/")
 
 (def ^IRI MappedTerm (.createIRI vf NS-INST "MappedTerm"))
 
@@ -39,7 +40,7 @@
   (asMappingRDF ^Model [this]))
 
 
-(defrecord SearchRecord [^String term ^String subject ^String property ^Float score]
+(defrecord SearchRecord [^String term ^String subject ^String property ^String value ^Float score]
 
   AsMappingRDF
   (asMappingRDF [this]
@@ -63,6 +64,15 @@
   "Define comparator for `SearchRecord` by `score` field."
   (comparator (fn [x y]
                 (> (get x :score) (get y :score)))))
+
+
+(defn record-valuep?
+  "Predicate checks if record contains given `value`. 
+
+  Useful for filtering."
+  [^String value ^SearchRecord r]
+  (= (cs/lower-case value)
+     (cs/lower-case (get r :value))))
 
 
 (defn print-repository
@@ -151,7 +161,7 @@
 
 (def ^:private find-mapping-rq
 "prefix skos: <http://www.w3.org/2004/02/skos/core#>
- prefix map: <http://rdf.adalab-project/ontology/mapping/>
+ prefix map: <http://rdf.adalab-project.org/ontology/mapping/>
  prefix xsd: <http://www.w3.org/2001/XMLSchema#>
 
 select ?subj ?term ?node where {
@@ -164,7 +174,7 @@ skos:closeMatch ?subj .
 
 
 (def ^:private find-weights-rq
-"prefix map: <http://rdf.adalab-project/ontology/mapping/>
+"prefix map: <http://rdf.adalab-project.org/ontology/mapping/>
  prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 select ?weight_node ?prop ?weight {
@@ -181,7 +191,8 @@ bind (iri(?in_prop) as ?prop) .
 (def match-term-rq
 "prefix luc: <http://www.openrdf.org/contrib/lucenesail#>
 
-  select ?tfString ?sub ?score ?property  where {
+  select ?tfString ?sub ?score ?property ?value where {
   bind (str(?tf_term) as ?tfString) .
   (?tfString luc:allMatches luc:property luc:allProperties luc:score) luc:search (?sub ?property ?score) .
+  ?sub ?property ?value
 }")

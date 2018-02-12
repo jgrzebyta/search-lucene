@@ -37,11 +37,14 @@
         property (-> b
                      (.getValue "property")
                      (.stringValue))
+        value (-> b
+                  (.getValue "value")
+                  (.stringValue))
         score (-> b
                   (.getValue "score")
                   (.floatValue)
                   (normalize-score mapping-repository property))
-        sub-sc (SearchRecord. term subject property score)]
+        sub-sc (SearchRecord. term subject property value score)]
     (log/debugf "Term: %s -- %s\n" term sub-sc)
     sub-sc))
 
@@ -61,11 +64,15 @@
   This function process SPARQL query results loading them into `search.vocabulary.SearchRecord` record. 
   If there is many records in the internal map returns with the highest score. 
   "
-  [mappings-repository dataset & [term]]
-  (let [data-structure-seq (map #(process-binding mappings-repository %) dataset)
-        added-domains (merge-by-domains data-structure-seq)
-        top-one (first (sort v/search-record-comparator added-domains))]
+  [mappings-repository dataset term]
+  (let [data-structure-seq (map #(process-binding mappings-repository %) dataset) ;; general searching
+        filtered-dataset-seq (filter (partial v/record-valuep? term) data-structure-seq)  ;; filters only exact value matches
+        to-process (if (empty? filtered-dataset-seq)    
+                     data-structure-seq
+                     filtered-dataset-seq)
+        added-domains (merge-by-domains to-process)     ;; group by domains. Partial scores are added. If filtered collection is empty than work on unfiltered one                
+        top-one (first (sort v/search-record-comparator added-domains))] ;; return with the highest score
     (when (some? top-one)
-      (.debug main-logger (format "[term: '%s'] Data: \n\t %s" term (with-out-str (pp/pprint (list data-structure-seq)))))
+      (.debug main-logger (format "[term: '%s'] Data: \n\t %s" term (with-out-str (pp/pprint (list to-process)))))
       (.debug main-logger (format "[term: '%s'] Load '%s' into mapping repository." term (.toString top-one)))
       (v/add-to-repository mappings-repository (.asMappingRDF top-one)))))

@@ -10,7 +10,7 @@ Mapping file consists two blocks:
  Example:
  
  ```
- @prefix map: <http://rdf.adalab-project/ontology/mapping/> .
+ @prefix map: <http://rdf.adalab-project.org/ontology/mapping/> .
  @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
  
  map:d586122a836de73dec223eb0780d25f40bb51269 a map:MappedTerm ;
@@ -25,7 +25,7 @@ Mapping file consists two blocks:
 Example:
 
 ```
- @prefix map: <http://rdf.adalab-project/ontology/mapping/> .
+ @prefix map: <http://rdf.adalab-project.org/ontology/mapping/> .
 
  :current_weights a map:WeightSet ;
    map:weights [ rdf:predicate :term ; map:weight "1.5"^^xsd:float ] ,

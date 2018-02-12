@@ -14,6 +14,11 @@ data:record21 a :Record ;
     :mock "15"^^xsd:int ;
     :term2 "term2" .
 
+data:record22 a :Record ;
+    :mock "15"^^xsd:int ;
+    :term "term2-EXT" ;
+    :term2 "term2-BO" .
+
 data:record3 a :Record ;
     :term "term3" ;
     :mock "50"^^xsd:int .
