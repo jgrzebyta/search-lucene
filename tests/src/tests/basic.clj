@@ -1,16 +1,16 @@
 (ns tests.basic
-  (:import [java.nio.file Files]
-           [java.nio.file.attribute FileAttribute]
-           [org.apache.commons.io FileUtils])
-  (:require [clojure.pprint :as pp]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
+            [clojure.pprint :as pp]
+            [clojure.string :as str]
             [clojure.test :as t]
             [clojure.tools.logging :as log]
-            [rdf4j.loader :as l]
+            [rdf4j.core :as c]
             [rdf4j.repository :as r]
-            [search.vocabulary :as voc]
             [search.lucene-search :as m]
-            [clojure.string :as str]))
+            [search.vocabulary :as voc])
+  (:import java.nio.file.attribute.FileAttribute
+           java.nio.file.Files
+           org.apache.commons.io.FileUtils))
 
 (t/deftest test-do-main
   (t/testing "Test do-main"
@@ -38,7 +38,7 @@
   (let [weight-file (io/file "tests/resources/weights.ttl")
         repository (r/make-mem-repository)]
     (t/testing "Searching weights"
-      (l/load-data repository weight-file)
+      (c/load-data repository weight-file)
       (log/info "Data loaded")
       (let [mapping (voc/search-weight repository "http://example.org/term")]
         (t/is (map? mapping))

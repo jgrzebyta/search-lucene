@@ -2,14 +2,14 @@
           :source-paths #{"src"}
           :resource-paths #{"resources"}
           :url "http://www.adalab-project.org/"
-          :dependencies '[[adalab/triple-loader "0.2.1-SNAPSHOT"]
+          :dependencies '[[adalab/triple-loader "0.2.2-SNAPSHOT"]
                           [org.slf4j/slf4j-api "1.7.25"]
                           [org.clojure/tools.logging "0.3.1"]
                           [org.clojure/tools.cli "0.3.5"]
                           [org.eclipse.rdf4j/rdf4j-runtime "2.3-SNAPSHOT"]
-                          [buddy/buddy-core "1.2.0"]
+                          [buddy/buddy-core "1.4.0"]
                           [ch.qos.logback/logback-classic "1.2.3"]
-                          [degree9/boot-semver "1.4.4" :scope "test"]])
+                          [degree9/boot-semver "1.7.0" :scope "test"]])
 
 
 ;; this line prevents confusing the deployer with dependencies` pom.xml files

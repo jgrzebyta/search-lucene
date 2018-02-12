@@ -3,6 +3,7 @@
             [buddy.core.hash :as bch]
             [clojure.tools.logging :as log]
             [rdf4j.repository :as r]
+            [rdf4j.core :as c]
             [rdf4j.sparql.processor :as s]
             [rdf4j.utils :as u])
   (:import [java.lang Iterable]
@@ -48,10 +49,10 @@
           map-instance (.createIRI vf NS-INST term-sha1)
           to-return (-> (LinkedHashModelFactory.)
                         (.createEmptyModel))]
-      (.add to-return map-instance RDF/TYPE MappedTerm (r/context-array))
-      (.add to-return map-instance SHA1 (.createLiteral vf term-sha1) (r/context-array))
-      (.add to-return map-instance SKOS/NOTATION (.createLiteral vf term XMLSchema/STRING) (r/context-array))
-      (.add to-return map-instance SKOS/CLOSE_MATCH (.createIRI vf subject) (r/context-array))
+      (.add to-return map-instance RDF/TYPE MappedTerm (u/context-array))
+      (.add to-return map-instance SHA1 (.createLiteral vf term-sha1) (u/context-array))
+      (.add to-return map-instance SKOS/NOTATION (.createLiteral vf term XMLSchema/STRING) (u/context-array))
+      (.add to-return map-instance SKOS/CLOSE_MATCH (.createIRI vf subject) (u/context-array))
       to-return))
   Object
   (toString [this]
@@ -74,14 +75,14 @@
                         (.set BasicWriterSettings/PRETTY_PRINT true)
                         (.set BasicWriterSettings/RDF_LANGSTRING_TO_LANG_LITERAL false))]
     ;; copy all namespaces from repository
-    (doseq [^Namespace ns (r/get-all-namespaces repository)]
+    (doseq [^Namespace ns (c/get-all-namespaces repository)]
       (.setNamespace model ns))
     ;; add default namespaces to model
     (.setNamespace model SKOS/NS)
     (.setNamespace model RDF/NS)
     (.setNamespace model XMLSchema/NS)
     (.setNamespace model "map" NS-INST)
-    (.addAll model (r/get-all-statements repository))
+    (.addAll model (u/get-all-statements repository))
   (Rio/write model (OutputStreamWriter. System/out) RDFFormat/TURTLE writer-config)))
 
 
@@ -124,7 +125,7 @@
   (r/with-open-repository [cnx repository]
     (try
       (.begin cnx)
-      (.add cnx statements (r/context-array))
+      (.add cnx statements (u/context-array))
       (catch Exception e
         (do
           (.rollback cnx)
@@ -143,7 +144,7 @@
     (doall
      (map #(-> %
                (.getSubject)
-               (.stringValue)) (-> (.getStatements cnx nil RDF/TYPE WEIGHT-SET true (r/context-array))
+               (.stringValue)) (-> (.getStatements cnx nil RDF/TYPE WEIGHT-SET true (u/context-array))
                                    (u/iter-seq)
                                    )))))
 

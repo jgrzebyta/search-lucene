@@ -1,21 +1,22 @@
 (ns search.lucene-search
   (:gen-class)
-  (:import [java.io File]
-           [java.nio.file Paths Path]
-           [java.util Collection]
-           [org.eclipse.rdf4j.repository.sail SailRepository]
-           [org.eclipse.rdf4j.sail.nativerdf NativeStore]
-           [ch.qos.logback.classic Level])
   (:require [clojure.java.io :as io]
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.tools.logging :as log]
-            [rdf4j.loader :as l :exclude [-main]]
+            [rdf4j.core :as c]
+            [rdf4j.loader :as l]
             [rdf4j.repository :as r]
             [rdf4j.sparql.processor :as sp]
             [rdf4j.utils :as u]
             [search.analyser :as a]
-            [search.vocabulary :as v]
-            [search.logger :as sl]))
+            [search.logger :as sl]
+            [search.vocabulary :as v])
+  (:import ch.qos.logback.classic.Level
+           java.io.File
+           java.nio.file.Path
+           java.util.Collection
+           org.eclipse.rdf4j.repository.sail.SailRepository
+           org.eclipse.rdf4j.sail.nativerdf.NativeStore))
 
 (declare do-main load-sparql-string)
 
@@ -34,10 +35,10 @@
               dir)
         ^SailRepository repo (r/make-repository-with-lucene (NativeStore. (.toFile dir) "spoc,cspo,pocs"))]
     ;; detects if data are loaded;
-    (if (empty? (r/get-all-statements repo))
+    (if (empty? (u/get-all-statements repo))
       (try
         (l/load-multidata repo dataset)
-        (let [cnt (count (r/get-all-statements repo))]
+        (let [cnt (count (u/get-all-statements repo))]
           (log/debugf "Loaded [%d] statements\n" cnt)
           (assert (> cnt 0)))
         (catch Exception x (throw (ex-info "Data cannot be loaded into repository. " {:reason x :repository-dir (.getDataDir repo)}))))
@@ -47,7 +48,7 @@
 
 (defn make-mapping-repository ^SailRepository [^File file]
   (let [mem-repo (r/make-mem-repository)]
-    (l/load-data mem-repo file)
+    (c/load-data mem-repo file)
     mem-repo))
 
 (defn process-terms
